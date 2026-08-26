@@ -1,0 +1,14 @@
+{
+  "siteName": "EzLens Manager",
+  "siteLogo": "",
+  "fontFamily": "vazirmatn",
+  "theme": "light",
+  "apiBaseUrl": "https://ezlens.ir",
+  "notifications": {
+    "orders": true,
+    "comments": true,
+    "notes": false
+  },
+  "dateFormat": "fa-IR",
+  "currency": "تومان"
+}
