@@ -1,5 +1,21 @@
 import { NextResponse } from "next/server";
 
+function getWPAuth() {
+  const baseUrl = process.env.WP_BASE_URL;
+  const username =
+    process.env.WP_USERNAME ||
+    process.env.WP_APP_USERNAME ||
+    "";
+  const password = process.env.WP_APP_PASSWORD || "";
+
+  if (!baseUrl || !username || !password) {
+    return { error: "تنظیمات وردپرس ناقص است (USERNAME/APP_PASSWORD)" as const };
+  }
+
+  const auth = Buffer.from(`${username}:${password}`).toString("base64");
+  return { baseUrl, auth };
+}
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> }
@@ -11,14 +27,20 @@ export async function GET(
       return NextResponse.json({ error: "WP_BASE_URL تنظیم نشده" }, { status: 500 });
     }
 
-    // ✅ دریافت مقاله با تمام متا فیلدها و تصاویر
     const url = new URL(`${baseUrl}/wp-json/wp/v2/posts/${id}`);
     url.searchParams.set("_embed", "1");
+    url.searchParams.set("context", "edit");
+
+    const cfg = getWPAuth();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (!("error" in cfg)) {
+      headers.Authorization = `Basic ${cfg.auth}`;
+    }
 
     const res = await fetch(url.toString(), {
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       cache: "no-store",
     });
 
@@ -35,22 +57,30 @@ export async function GET(
     }
 
     const post = await res.json();
+    const meta = post.meta || {};
 
-    // ✅ استخراج داده‌ها
     const result: any = {
       id: post.id,
-      title: post.title?.rendered || post.title || "",
+      title: post.title?.raw || post.title?.rendered || post.title || "",
       slug: post.slug || "",
       status: post.status || "draft",
       date: post.date ? new Date(post.date).toLocaleDateString("fa-IR") : "",
       modified: post.modified ? new Date(post.modified).toLocaleDateString("fa-IR") : "",
-      content: post.content?.rendered || post.content || "",
-      excerpt: post.excerpt?.rendered || post.excerpt || "",
+      content: post.content?.raw || post.content?.rendered || post.content || "",
+      excerpt: post.excerpt?.raw || post.excerpt?.rendered || post.excerpt || "",
       permalink: post.link || "",
+      categories: post.categories || [],
+      tags: post.tags || [],
+      featured_media: post.featured_media || 0,
+      seo_title: meta.rank_math_title || "",
+      seo_description: meta.rank_math_description || "",
+      seo_keywords: meta.rank_math_focus_keyword || "",
+      description_css: meta.ezlens_article_css || "",
+      description_js: meta.ezlens_article_js || "",
+      views: parseInt(String(meta.post_views_count || "0")) || 0,
     };
 
-    // ✅ دریافت تصویر شاخص از _embedded
-    if (post._embedded && post._embedded["wp:featuredmedia"] && post._embedded["wp:featuredmedia"][0]) {
+    if (post._embedded?.["wp:featuredmedia"]?.[0]) {
       const media = post._embedded["wp:featuredmedia"][0];
       result.featured_image = {
         id: media.id,
@@ -61,26 +91,14 @@ export async function GET(
       result.featured_image = null;
     }
 
-    // ✅ دریافت دسته‌ها از _embedded
-    if (post._embedded && post._embedded["wp:term"] && post._embedded["wp:term"][0]) {
+    if (post._embedded?.["wp:term"]?.[0]) {
       result.categories_data = post._embedded["wp:term"][0].map((cat: any) => ({
         id: cat.id,
         name: cat.name,
       }));
-      result.categories = post._embedded["wp:term"][0].map((cat: any) => cat.id);
     } else {
       result.categories_data = [];
-      result.categories = [];
     }
-
-    // ✅ دریافت متا فیلدها (سئو و کدهای اختصاصی)
-    const meta = post.meta || {};
-    result.seo_title = meta.rank_math_title || "";
-    result.seo_description = meta.rank_math_description || "";
-    result.seo_keywords = meta.rank_math_focus_keyword || "";
-    result.description_css = meta.ezlens_article_css || "";
-    result.description_js = meta.ezlens_article_js || "";
-    result.views = parseInt(meta.post_views_count) || 0;
 
     return NextResponse.json(result);
   } catch (error: any) {
@@ -101,16 +119,11 @@ export async function PUT(
   try {
     const { id } = await context.params;
     const body = await request.json();
+    const cfg = getWPAuth();
 
-    const baseUrl = process.env.WP_BASE_URL;
-    const username = process.env.WP_APP_USERNAME || "admin";
-    const password = process.env.WP_APP_PASSWORD;
-
-    if (!baseUrl || !password) {
-      return NextResponse.json({ error: "تنظیمات وردپرس ناقص است" }, { status: 500 });
+    if ("error" in cfg) {
+      return NextResponse.json({ error: cfg.error }, { status: 500 });
     }
-
-    const auth = Buffer.from(`${username}:${password}`).toString("base64");
 
     const payload: any = {
       title: body.title,
@@ -130,10 +143,10 @@ export async function PUT(
       },
     };
 
-    const res = await fetch(`${baseUrl}/wp-json/wp/v2/posts/${id}`, {
-      method: "PUT",
+    const res = await fetch(`${cfg.baseUrl}/wp-json/wp/v2/posts/${id}`, {
+      method: "POST", // وردپرس برای update معمولاً POST را پایدارتر می‌پذیرد
       headers: {
-        Authorization: `Basic ${auth}`,
+        Authorization: `Basic ${cfg.auth}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -153,26 +166,21 @@ export async function PUT(
     }
 
     const post = await res.json();
+    const meta = post.meta || {};
 
-    // برگرداندن داده‌های به‌روز شده
-    const result: any = {
+    return NextResponse.json({
       ok: true,
       id: post.id,
       title: post.title?.rendered || post.title || "",
       slug: post.slug || "",
       status: post.status || "draft",
       permalink: post.link || "",
-    };
-
-    // متا فیلدها
-    const meta = post.meta || {};
-    result.seo_title = meta.rank_math_title || "";
-    result.seo_description = meta.rank_math_description || "";
-    result.seo_keywords = meta.rank_math_focus_keyword || "";
-    result.description_css = meta.ezlens_article_css || "";
-    result.description_js = meta.ezlens_article_js || "";
-
-    return NextResponse.json(result);
+      seo_title: meta.rank_math_title || "",
+      seo_description: meta.rank_math_description || "",
+      seo_keywords: meta.rank_math_focus_keyword || "",
+      description_css: meta.ezlens_article_css || "",
+      description_js: meta.ezlens_article_js || "",
+    });
   } catch (error: any) {
     return NextResponse.json(
       {
@@ -190,21 +198,16 @@ export async function DELETE(
 ) {
   try {
     const { id } = await context.params;
+    const cfg = getWPAuth();
 
-    const baseUrl = process.env.WP_BASE_URL;
-    const username = process.env.WP_APP_USERNAME || "admin";
-    const password = process.env.WP_APP_PASSWORD;
-
-    if (!baseUrl || !password) {
-      return NextResponse.json({ error: "تنظیمات وردپرس ناقص است" }, { status: 500 });
+    if ("error" in cfg) {
+      return NextResponse.json({ error: cfg.error }, { status: 500 });
     }
 
-    const auth = Buffer.from(`${username}:${password}`).toString("base64");
-
-    const res = await fetch(`${baseUrl}/wp-json/wp/v2/posts/${id}?force=true`, {
+    const res = await fetch(`${cfg.baseUrl}/wp-json/wp/v2/posts/${id}?force=true`, {
       method: "DELETE",
       headers: {
-        Authorization: `Basic ${auth}`,
+        Authorization: `Basic ${cfg.auth}`,
         "Content-Type": "application/json",
       },
       cache: "no-store",

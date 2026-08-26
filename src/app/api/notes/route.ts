@@ -19,10 +19,7 @@ export async function GET(request: Request) {
     if ("error" in cfg) return NextResponse.json({ error: cfg.error }, { status: 500 });
 
     const res = await fetch(`${cfg.baseUrl}/wp-json/ei/v1/notes`, {
-      headers: {
-        Authorization: `Basic ${cfg.auth}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Basic ${cfg.auth}`, "Content-Type": "application/json" },
       cache: "no-store",
     });
 
@@ -31,15 +28,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "خطا در دریافت یادداشت‌ها", status: res.status, details: text.slice(0, 500) }, { status: res.status });
     }
 
-    // پلاگین وردپرس یک آبجکت برمی‌گرداند: { items: [...], total: ... }
     const data = await res.json();
-
-    // اگر آبجکت است و items دارد، همان را برگردان
     if (data && typeof data === "object" && !Array.isArray(data) && data.items) {
       return NextResponse.json(data.items);
     }
-
-    // اگر آرایه است، همان را برگردان
     return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (error: any) {
     return NextResponse.json({ error: "خطای سرور", details: error?.message || "unknown" }, { status: 500 });
@@ -52,22 +44,27 @@ export async function POST(request: Request) {
     if ("error" in cfg) return NextResponse.json({ error: cfg.error }, { status: 500 });
 
     const body = await request.json();
+
+    // ✅ اطمینان از اینکه checklist یک آرایه است
+    const checklist = Array.isArray(body.checklist) ? body.checklist : [];
+
     const payload = {
       title: body.title || "یادداشت جدید",
       content: body.content || "",
       color: body.color || "yellow",
       priority: body.priority || "low",
-      checklist: body.checklist || [],
+      checklist: checklist, // ← ارسال آرایه
       files: body.files || [],
       pinned: body.pinned || false,
+      tags: body.tags || [],
+      deadline: body.deadline || "",
+      html: body.html || "",
+      css: body.css || "",
     };
 
     const res = await fetch(`${cfg.baseUrl}/wp-json/ei/v1/notes`, {
       method: "POST",
-      headers: {
-        Authorization: `Basic ${cfg.auth}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Basic ${cfg.auth}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       cache: "no-store",
     });

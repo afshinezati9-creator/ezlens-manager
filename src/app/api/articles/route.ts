@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 
 function getWPAuth() {
   const baseUrl = process.env.WP_BASE_URL;
-  const username = process.env.WP_APP_USERNAME || "admin";
-  const password = process.env.WP_APP_PASSWORD;
+  const username =
+    process.env.WP_USERNAME ||
+    process.env.WP_APP_USERNAME ||
+    "";
+  const password = process.env.WP_APP_PASSWORD || "";
 
-  if (!baseUrl || !password) {
+  if (!baseUrl || !username || !password) {
     return { error: "تنظیمات محیطی وردپرس ناقص است" as const };
   }
 
@@ -14,8 +17,16 @@ function getWPAuth() {
 }
 
 function mapArticle(post: any) {
-  const meta = Array.isArray(post.meta) ? post.meta : [];
-  const getMeta = (key: string) => meta.find((m: any) => m.key === key)?.value || "";
+  const meta = post.meta || {};
+  const getMeta = (key: string) => {
+    if (meta && typeof meta === "object" && !Array.isArray(meta)) {
+      return meta[key] || "";
+    }
+    if (Array.isArray(meta)) {
+      return meta.find((m: any) => m.key === key)?.value || "";
+    }
+    return "";
+  };
 
   return {
     id: post.id,
@@ -30,16 +41,15 @@ function mapArticle(post: any) {
     tags: post.tags || [],
     featured_media: post.featured_media || 0,
     permalink: post.link || "",
-    views: parseInt(getMeta("post_views_count")) || 0,
-    description_css: getMeta("ezlens_article_css"),
-    description_js: getMeta("ezlens_article_js"),
-    seo_title: getMeta("rank_math_title"),
-    seo_description: getMeta("rank_math_description"),
-    seo_keywords: getMeta("rank_math_focus_keyword"),
+    views: parseInt(String(getMeta("post_views_count") || "0")) || 0,
+    description_css: getMeta("ezlens_article_css") || "",
+    description_js: getMeta("ezlens_article_js") || "",
+    seo_title: getMeta("rank_math_title") || "",
+    seo_description: getMeta("rank_math_description") || "",
+    seo_keywords: getMeta("rank_math_focus_keyword") || "",
   };
 }
 
-// ✅ GET بدون احراز هویت
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -60,19 +70,28 @@ export async function GET(request: Request) {
     url.searchParams.set("_embed", "1");
     if (search) url.searchParams.set("search", search);
     if (category) url.searchParams.set("categories", category);
-    if (status) url.searchParams.set("status", status);
+    if (status) {
+      url.searchParams.set("status", status);
+    } else {
+      url.searchParams.set("status", "any");
+    }
 
-    // ✅ درخواست بدون هدر Authorization (عمومی)
+    // برای status=any یا draft نیاز به auth داریم
+    const cfg = getWPAuth();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (!("error" in cfg)) {
+      headers.Authorization = `Basic ${cfg.auth}`;
+    }
+
     const res = await fetch(url.toString(), {
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       cache: "no-store",
     });
 
     if (!res.ok) {
       const text = await res.text();
-      console.error("❌ خطا در دریافت مقالات:", res.status, text.slice(0, 300));
       return NextResponse.json(
         {
           error: "خطا در دریافت مقالات از وردپرس",
@@ -88,8 +107,9 @@ export async function GET(request: Request) {
     const totalPages = res.headers.get("X-WP-TotalPages");
 
     const articles = (Array.isArray(data) ? data : []).map((post: any) => {
-      const mapped = mapArticle(post);
-      if (post._embedded && post._embedded["wp:featuredmedia"] && post._embedded["wp:featuredmedia"][0]) {
+      const mapped: any = mapArticle(post);
+
+      if (post._embedded?.["wp:featuredmedia"]?.[0]) {
         const media = post._embedded["wp:featuredmedia"][0];
         mapped.featured_image = {
           id: media.id,
@@ -97,12 +117,14 @@ export async function GET(request: Request) {
           name: media.title?.rendered || media.slug || "",
         };
       }
-      if (post._embedded && post._embedded["wp:term"] && post._embedded["wp:term"][0]) {
+
+      if (post._embedded?.["wp:term"]?.[0]) {
         mapped.categories_data = post._embedded["wp:term"][0].map((cat: any) => ({
           id: cat.id,
           name: cat.name,
         }));
       }
+
       return mapped;
     });
 
@@ -113,7 +135,6 @@ export async function GET(request: Request) {
       page: Number(page),
     });
   } catch (error: any) {
-    console.error("❌ خطای سرور در GET /api/articles:", error?.message);
     return NextResponse.json(
       {
         error: "خطای سرور در ارتباط با وردپرس",
@@ -124,7 +145,6 @@ export async function GET(request: Request) {
   }
 }
 
-// ✅ POST نیاز به احراز هویت دارد
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -167,7 +187,6 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       const text = await res.text();
-      console.error("❌ خطا در ساخت مقاله:", res.status, text.slice(0, 300));
       return NextResponse.json(
         {
           error: "ساخت مقاله ناموفق بود",
@@ -187,7 +206,6 @@ export async function POST(request: Request) {
       permalink: post.link,
     });
   } catch (error: any) {
-    console.error("❌ خطای سرور در POST /api/articles:", error?.message);
     return NextResponse.json(
       {
         error: "خطای سرور در ساخت مقاله",

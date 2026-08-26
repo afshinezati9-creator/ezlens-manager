@@ -21,22 +21,26 @@ export async function PUT(
     const cfg = getAuth();
     if ("error" in cfg) return NextResponse.json({ error: cfg.error }, { status: 500 });
 
+    // ✅ اطمینان از اینکه checklist یک آرایه است
+    const checklist = Array.isArray(body.checklist) ? body.checklist : [];
+
     const payload = {
       title: body.title,
       content: body.content,
       color: body.color,
       priority: body.priority,
-      checklist: body.checklist,
-      files: body.files,
-      pinned: body.pinned,
+      checklist: checklist,
+      files: body.files || [],
+      pinned: body.pinned || false,
+      tags: body.tags || [],
+      deadline: body.deadline || "",
+      html: body.html || "",
+      css: body.css || "",
     };
 
     const res = await fetch(`${cfg.baseUrl}/wp-json/ei/v1/notes/${id}`, {
       method: "PUT",
-      headers: {
-        Authorization: `Basic ${cfg.auth}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Basic ${cfg.auth}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       cache: "no-store",
     });

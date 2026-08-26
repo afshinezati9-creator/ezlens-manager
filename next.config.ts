@@ -1,11 +1,10 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  output: 'standalone', // برای اجرا روی Vercel و سرورهای Node
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  output: "export", // مهم: برای ساخت APK باید استاتیک باشد
   images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: '**' }, // اجازه لود تصاویر از هر دامنه‌ای
-    ],
+    unoptimized: true, // چون خروجی استاتیک است، تصاویر بهینه‌سازی نشوند
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;
