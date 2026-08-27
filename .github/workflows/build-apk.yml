@@ -37,10 +37,13 @@ jobs:
       - name: Install Capacitor
         run: |
           npm install @capacitor/core @capacitor/cli @capacitor/android
+<<<<<<< HEAD
           npm install -D @capacitor/assets
 
       - name: Generate Icons
         run: npx capacitor-assets generate --android
+=======
+>>>>>>> a68f0c5c47be408485120f23672182ebf16c6416
 
       - name: Init Capacitor
         run: npx cap init ezlens-manager https://ezlens.ir --web-dir=out
@@ -61,4 +64,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ezlens-manager-debug-apk
+<<<<<<< HEAD
           path: android/app/build/outputs/apk/debug/app-debug.apk
+=======
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+>>>>>>> a68f0c5c47be408485120f23672182ebf16c6416
