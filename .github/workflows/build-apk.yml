@@ -1,37 +1,8 @@
-<<<<<<< HEAD
-# نام این workflow (همونطور که در GitHub نمایش داده میشه)
-name: Build Android APK
-
-# مشخص می‌کنه که این workflow کی اجرا بشه:
-on:
-  # وقتی کد جدید به شاخه‌ی main فرستاده میشه (push)
-  push:
-    branches: ["main"]
-  # یا وقتی که خودمون دکمه‌ی "Run workflow" رو در GitHub بزنیم (دستی)
-  workflow_dispatch:
-
-# تعریف کارهایی که باید انجام بشن (jobs)
-jobs:
-  # نام این job (میتونه هر اسمی باشه)
-  build:
-    # روی آخرین نسخه‌ی Ubuntu (سیستم‌عامل لینوکس) اجرا میشه
-    runs-on: ubuntu-latest
-
-    # مراحلی که باید به ترتیب اجرا بشن
-    steps:
-      # ===== مرحله ۱: دریافت کد از مخزن GitHub =====
-      # این کار باعث میشه که کدهای شما در محیط اجرا در دسترس باشه
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # ===== مرحله ۲: نصب Node.js نسخه ۲۲ =====
-      # Capacitor به Node.js ۲۲ یا بالاتر نیاز داره (این خطا رو قبلاً داشتیم)
-=======
 name: Build Android APK
 
 on:
   push:
-    branches: ["main"]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -39,89 +10,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
->>>>>>> 160326501ca5a9da88393d2d9bf05b9f48cdc81d
-      - name: Setup Node.js 22
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: 20
 
-<<<<<<< HEAD
-      # ===== مرحله ۳: نصب وابستگی‌های پروژه =====
-      # دستور npm install تمام کتابخانه‌هایی که در package.json هست رو نصب میکنه
       - name: Install dependencies
         run: npm install
 
-      # ===== مرحله ۴: نصب Java 17 =====
-      # برای ساخت اپلیکیشن اندروید به Java Development Kit (JDK) نیاز داریم
-      - name: Setup Java 17
+      - name: Build Next.js
+        run: npm run build
+
+      - name: Sync Capacitor
+        run: npx cap sync
+
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: "temurin"    # نوع JDK (Temurin یه توزیع محبوب و رایگانه)
-          java-version: "17"         # نسخه‌ی ۱۷ (که با اندروید سازگاره)
-
-      # ===== مرحله ۵: نصب Android SDK =====
-      # این ابزارها رو نصب میکنه تا بتونیم اپلیکیشن اندروید رو build کنیم
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      # ===== مرحله ۶: ایجاد پوشه‌ی www (اگر وجود نداشته باشه) =====
-      # پوشه‌ی www جاییه که فایل‌های وب اپلیکیشن (HTML, CSS, JS) قرار میگیرن
-      # اینجا یه فایل ساده index.html میسازیم تا اگر پروژه‌تون خالی بود خطا نده
-      - name: Ensure www folder exists
-        run: |
-          mkdir -p www   # پوشه رو میسازه (اگر نباشه)
-          # اگه فایل index.html وجود نداشت، یه فایل پیش‌فرض میسازه
-=======
-      - name: Install dependencies
-        run: npm install
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: "17"
+          distribution: 'zulu'
+          java-version: '17'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Ensure www folder exists
-        run: |
-          mkdir -p www
->>>>>>> 160326501ca5a9da88393d2d9bf05b9f48cdc81d
-          if [ ! -f www/index.html ]; then
-            printf '%s\n' '<!doctype html><html><head><meta charset="utf-8"><title>EzLens Manager</title></head><body>Loading...</body></html>' > www/index.html
-          fi
-
-<<<<<<< HEAD
-      # ===== مرحله ۷: همگام‌سازی Capacitor با اندروید =====
-      # این دستور فایل‌های وب رو به پوشه‌ی اندروید کپی میکنه و تنظیمات رو انجام میده
-      - name: Sync Capacitor Android
-        run: npx cap sync android
-
-      # ===== مرحله ۸: ساخت فایل APK (نسخه‌ی Debug) =====
-      # اینجا با استفاده از Gradle (ابزار ساخت اندروید) فایل APK رو میسازیم
-      # فایل خروجی در مسیر android/app/build/outputs/apk/debug/ قرار میگیره
-      - name: Build Debug APK
-        run: |
-          cd android                 # وارد پوشه‌ی اندروید میشیم
-          chmod +x gradlew           # به فایل gradlew (ابزار Gradle) اجازه‌ی اجرا میدیم
-          ./gradlew assembleDebug    # دستور ساخت نسخه‌ی Debug (برای تست)
-
-      # ===== مرحله ۹: آپلود فایل APK به عنوان Artifact =====
-      # فایل ساخته‌شده رو به GitHub آپلود میکنیم تا بعداً بتونیم دانلودش کنیم
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ezlens-manager-debug-apk   # نام فایلی که در GitHub نمایش داده میشه
-          path: android/app/build/outputs/apk/debug/app-debug.apk   # مسیر دقیق فایل APK
-=======
-      - name: Sync Capacitor Android
-        run: npx cap sync android
-
-      - name: Build Debug APK
+      - name: Build APK
         run: |
           cd android
           chmod +x gradlew
@@ -130,6 +44,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ezlens-manager-debug-apk
+          name: app-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
->>>>>>> 160326501ca5a9da88393d2d9bf05b9f48cdc81d
