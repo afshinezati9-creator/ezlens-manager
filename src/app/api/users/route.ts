@@ -29,7 +29,6 @@ export async function GET(request: Request) {
     }
 
     let customers = await res.json();
-    // مخفی کردن مدیر اصلی
     customers = customers.filter((c: any) => c.email !== "info@ezlens.ir" && c.id !== 1);
     return NextResponse.json(customers);
   } catch (error: any) {
@@ -44,11 +43,9 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    // اعتبارسنجی
     if (!body.email) return NextResponse.json({ error: "ایمیل الزامی است" }, { status: 400 });
     if (!body.phone) return NextResponse.json({ error: "شماره موبایل الزامی است" }, { status: 400 });
 
-    // نام کاربری = شماره موبایل
     const payload: any = {
       email: body.email,
       first_name: body.first_name || "",
@@ -94,37 +91,6 @@ export async function POST(request: Request) {
 
     const customer = await res.json();
     return NextResponse.json(customer, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: "خطای سرور", details: error?.message || "unknown" }, { status: 500 });
-  }
-}
-
-export async function DELETE(
-  request: Request,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await context.params;
-    const cfg = getAuth();
-    if ("error" in cfg) return NextResponse.json({ error: cfg.error }, { status: 500 });
-
-    if (id === "1") {
-      return NextResponse.json({ error: "امکان حذف مدیر اصلی وجود ندارد" }, { status: 403 });
-    }
-
-    const url = `${cfg.baseUrl.replace(/\/$/, "")}/wp-json/wc/v3/customers/${id}?force=true`;
-    const res = await fetch(url, {
-      method: "DELETE",
-      headers: { Authorization: `Basic ${cfg.auth}`, "Content-Type": "application/json" },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      return NextResponse.json({ error: "خطا در حذف کاربر", status: res.status, details: text.slice(0, 500) }, { status: res.status });
-    }
-
-    return NextResponse.json({ ok: true });
   } catch (error: any) {
     return NextResponse.json({ error: "خطای سرور", details: error?.message || "unknown" }, { status: 500 });
   }
