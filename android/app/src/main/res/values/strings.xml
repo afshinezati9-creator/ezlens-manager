@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">EzLens Manager</string>
-    <string name="title_activity_main">EzLens Manager</string>
-    <string name="package_name">ir.ezlens.manager</string>
-    <string name="custom_url_scheme">ir.ezlens.manager</string>
-</resources>
