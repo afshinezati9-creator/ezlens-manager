@@ -42,6 +42,9 @@ export default function EditUserPage() {
   const [city, setCity] = useState("");
   const [postcode, setPostcode] = useState("");
 
+  // ✅ این دو خط رو اضافه کردم (همونجا که مشکل داشتی)
+  const [internalNote, setInternalNote] = useState("");
+
   // یادداشت‌های داخلی
   const [notes, setNotes] = useState<CustomerNote[]>([]);
   const [newNote, setNewNote] = useState("");
@@ -151,7 +154,7 @@ export default function EditUserPage() {
     try {
       const billing = { first_name, last_name, company, phone, state, address_1: address1, city, postcode };
       const meta_data = [
-        { key: "internal_note", value: "" }, // برای سازگاری با نسخه‌های قبلی
+        { key: "internal_note", value: internalNote },
         ...(avatarUrl ? [{ key: "_ezlens_avatar_url", value: avatarUrl }] : [])
       ];
 
@@ -350,7 +353,7 @@ export default function EditUserPage() {
           </div>
         </section>
 
-        {/* کارت آدرس و یادداشت داخلی قدیمی (اگر خواستید حذف کنید) */}
+        {/* کارت آدرس و یادداشت داخلی قدیمی */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-5 border-b border-slate-100 bg-slate-50/50">
@@ -368,7 +371,13 @@ export default function EditUserPage() {
               <h2 className="text-sm font-semibold text-slate-800">یادداشت داخلی (قدیمی)</h2>
             </div>
             <div className="p-5">
-              <textarea value={internalNote} onChange={(e) => setInternalNote(e.target.value)} rows={6} className="w-full border rounded-lg px-3 py-2 text-sm outline-none" />
+              <textarea 
+                value={internalNote} 
+                onChange={(e) => setInternalNote(e.target.value)} 
+                rows={6} 
+                className="w-full border rounded-lg px-3 py-2 text-sm outline-none" 
+                placeholder="یادداشت داخلی برای این کاربر..."
+              />
             </div>
           </div>
         </section>
