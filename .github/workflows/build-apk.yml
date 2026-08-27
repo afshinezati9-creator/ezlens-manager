@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # نام این workflow (همونطور که در GitHub نمایش داده میشه)
 name: Build Android APK
 
@@ -25,11 +26,29 @@ jobs:
 
       # ===== مرحله ۲: نصب Node.js نسخه ۲۲ =====
       # Capacitor به Node.js ۲۲ یا بالاتر نیاز داره (این خطا رو قبلاً داشتیم)
+=======
+name: Build Android APK
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+>>>>>>> 160326501ca5a9da88393d2d9bf05b9f48cdc81d
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
+<<<<<<< HEAD
       # ===== مرحله ۳: نصب وابستگی‌های پروژه =====
       # دستور npm install تمام کتابخانه‌هایی که در package.json هست رو نصب میکنه
       - name: Install dependencies
@@ -55,10 +74,28 @@ jobs:
         run: |
           mkdir -p www   # پوشه رو میسازه (اگر نباشه)
           # اگه فایل index.html وجود نداشت، یه فایل پیش‌فرض میسازه
+=======
+      - name: Install dependencies
+        run: npm install
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Ensure www folder exists
+        run: |
+          mkdir -p www
+>>>>>>> 160326501ca5a9da88393d2d9bf05b9f48cdc81d
           if [ ! -f www/index.html ]; then
             printf '%s\n' '<!doctype html><html><head><meta charset="utf-8"><title>EzLens Manager</title></head><body>Loading...</body></html>' > www/index.html
           fi
 
+<<<<<<< HEAD
       # ===== مرحله ۷: همگام‌سازی Capacitor با اندروید =====
       # این دستور فایل‌های وب رو به پوشه‌ی اندروید کپی میکنه و تنظیمات رو انجام میده
       - name: Sync Capacitor Android
@@ -80,3 +117,19 @@ jobs:
         with:
           name: ezlens-manager-debug-apk   # نام فایلی که در GitHub نمایش داده میشه
           path: android/app/build/outputs/apk/debug/app-debug.apk   # مسیر دقیق فایل APK
+=======
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Build Debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ezlens-manager-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+>>>>>>> 160326501ca5a9da88393d2d9bf05b9f48cdc81d
