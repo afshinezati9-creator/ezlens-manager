@@ -1,0 +1,9 @@
+{
+  "appId": "ir.ezlens.manager",
+  "appName": "EzLens Manager",
+  "webDir": "www",
+  "server": {
+    "url": "https://ezlens-manager.vercel.app",
+    "cleartext": false
+  }
+}
