@@ -1,5 +1,6 @@
 "use client";
 
+import type { JSX } from "react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,10 @@ export default function NewArticlePage() {
   const [categories, setCategories] = useState<Item[]>([]);
   const [selectedCats, setSelectedCats] = useState<number[]>([]);
 
+  // State برای دسته جدید در مودال
+  const [newCat, setNewCat] = useState("");
+  const [newCatParent, setNewCatParent] = useState<number | 0>(0);
+
   const [htmlCode, setHtmlCode] = useState("<p>متن مقاله...</p>");
   const [cssCode, setCssCode] = useState("/* استایل اختصاصی مقاله */\n.article-title{font-weight:700;}");
   const [jsCode, setJsCode] = useState("// جاوااسکریپت اختصاصی مقاله");
@@ -40,7 +45,6 @@ export default function NewArticlePage() {
 
   // State‌های مودال
   const [catModalOpen, setCatModalOpen] = useState(false);
-  const [newCatParent, setNewCatParent] = useState<number | 0>(0);
   const [expandedCats, setExpandedCats] = useState<Record<number, boolean>>({});
   const [showAddCatForm, setShowAddCatForm] = useState(false);
 

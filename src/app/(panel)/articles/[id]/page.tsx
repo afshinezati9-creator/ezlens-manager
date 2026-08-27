@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import CodeEditor from "@/components/ui/CodeEditor";
 import UploadBox from "@/components/ui/UploadBox";
+import type { JSX } from "react"; // ✅ برای رفع خطای JSX
 
 type CodeTab = "html" | "css" | "js";
 type Item = { id: number; name: string; parent?: number };
@@ -128,6 +129,7 @@ export default function EditArticlePage() {
   // مودال
   const [catModalOpen, setCatModalOpen] = useState(false);
   const [newCatParent, setNewCatParent] = useState<number | 0>(0);
+  const [newCat, setNewCat] = useState(""); // ✅ اضافه شد
   const [expandedCats, setExpandedCats] = useState<Record<number, boolean>>({});
   const [showAddCatForm, setShowAddCatForm] = useState(false);
 

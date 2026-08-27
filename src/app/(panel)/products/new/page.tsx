@@ -1,5 +1,6 @@
 "use client";
 
+import type { JSX } from "react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,6 +36,9 @@ export default function NewProductPage() {
   const [newBrand, setNewBrand] = useState("");
   const [newTag, setNewTag] = useState("");
 
+  // اضافه کردن newCatParent برای انتخاب والد در مودال
+  const [newCatParent, setNewCatParent] = useState<number | 0>(0);
+
   const [htmlCode, setHtmlCode] = useState("<p>توضیحات محصول...</p>");
   const [cssCode, setCssCode] = useState("/* فقط روی همین محصول اثر می‌کند */\n.title{font-weight:700;}");
   const [jsCode, setJsCode] = useState("// JS محدود به باکس همین محصول");
@@ -58,7 +62,6 @@ export default function NewProductPage() {
   // State‌های مودال و فرم
   const [catModalOpen, setCatModalOpen] = useState(false);
   const [galleryModalOpen, setGalleryModalOpen] = useState(false);
-  const [newCatParent, setNewCatParent] = useState<number | 0>(0);
   const [expandedCats, setExpandedCats] = useState<Record<number, boolean>>({});
   const [showAddCatForm, setShowAddCatForm] = useState(false);
 

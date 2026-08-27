@@ -9,12 +9,15 @@ function getAuth() {
   return { baseUrl, auth };
 }
 
-export async function GET(
-  _request: Request,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: Request) {
   try {
-    const { id } = await context.params;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "شناسه کاربر الزامی است" }, { status: 400 });
+    }
+
     const cfg = getAuth();
     if ("error" in cfg) return NextResponse.json({ error: cfg.error }, { status: 500 });
 
@@ -40,12 +43,15 @@ export async function GET(
   }
 }
 
-export async function POST(
-  request: Request,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: Request) {
   try {
-    const { id } = await context.params;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "شناسه کاربر الزامی است" }, { status: 400 });
+    }
+
     const body = await request.json();
     const note = body.note;
     const author = body.author || "مدیر سیستم";

@@ -1,9 +1,7 @@
-import type { CapacitorConfig } from '@capacitor/cli';
-
-const config: CapacitorConfig = {
+const config = {
   appId: 'ir.ezlens.manager',
   appName: 'EzLens Manager',
-  webDir: 'out', // نام پوشه خروجی استاتیک Next.js
+  webDir: 'out',
 };
 
 export default config;
