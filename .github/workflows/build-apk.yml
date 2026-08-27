@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'   # ✅ تغییر از 20 به 22
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -35,9 +35,7 @@ jobs:
         run: |
           npm install @capacitor/core @capacitor/cli @capacitor/android
 
-      - name: Init Capacitor
-        run: npx cap init ezlens-manager https://ezlens.ir --web-dir=www
-
+      # ✅ مرحله Init حذف شد چون کانفیگ JSON داریم
       - name: Add Android Platform
         run: npx cap add android
 
