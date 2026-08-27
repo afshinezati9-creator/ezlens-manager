@@ -1,11 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "export",  // <-- این خط رو اضافه کن
+  // ❌ خط زیر رو کامنت کردم تا API routes درست کار کنن
+  // output: "export",
+  
   images: {
     unoptimized: true,
   },
-  trailingSlash: true, // برای سازگاری با Capacitor
+  
+  // ❌ این رو هم کامنت کردم
+  // trailingSlash: true,
 };
 
 export default nextConfig;
