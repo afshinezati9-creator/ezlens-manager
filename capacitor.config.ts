@@ -1,10 +1,16 @@
-const config = {
-  appId: 'ir.ezlens.manager',
-  appName: 'EzLens Manager',
-  webDir: 'www', // پوشه خالی برای بیلد Capacitor
+import type { CapacitorConfig } from "@capacitor/cli";
+
+const config: CapacitorConfig = {
+  appId: "ir.ezlens.manager",
+  appName: "EzLens Manager",
+  webDir: "www",
   server: {
-    url: 'https://YOUR_VERCEL_URL.vercel.app', // ⚠️ آدرس سایت واقعی بعد از دیپلوی
-    cleartext: false, // اگر https باشد، false بگذار
+    // بعد از دیپلوی Vercel، آدرس واقعی را بگذار
+    url: "https://YOUR_VERCEL_URL.vercel.app",
+    cleartext: false,
+  },
+  android: {
+    allowMixedContent: false,
   },
 };
 
