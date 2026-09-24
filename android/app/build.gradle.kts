@@ -1,7 +1,6 @@
 plugins {
     id("com.android.application")
-    id("kotlin-android")
-    // Flutter plugin must be after Android + Kotlin
+    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -29,7 +28,6 @@ android {
 
     buildTypes {
         release {
-            // Debug signing for CI/installable APK; replace with release keystore later
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             isShrinkResources = false
