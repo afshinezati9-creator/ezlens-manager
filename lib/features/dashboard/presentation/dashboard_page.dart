@@ -26,29 +26,34 @@ final dashboardRecentLoginsProvider =
   );
   final list = List<ManagerUser>.from(result.items);
   list.sort((a, b) {
-    final aa = a.lastLogin ?? a.dateCreated ?? DateTime.fromMillisecondsSinceEpoch(0);
-    final bb = b.lastLogin ?? b.dateCreated ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final aa = a.lastLogin ??
+        a.dateCreated ??
+        DateTime.fromMillisecondsSinceEpoch(0);
+    final bb = b.lastLogin ??
+        b.dateCreated ??
+        DateTime.fromMillisecondsSinceEpoch(0);
     return bb.compareTo(aa);
   });
   return list.take(8).toList();
 });
 
-/// Latest products with views
+/// Latest products with views.
 final dashboardLatestProductsProvider =
     FutureProvider.autoDispose<List<TopContentItem>>((ref) {
   return ref.watch(statsRepositoryProvider).latestProductsWithViews(limit: 6);
 });
 
-/// Latest posts/articles with views
+/// Latest posts/articles with views.
 final dashboardLatestPostsProvider =
     FutureProvider.autoDispose<List<TopContentItem>>((ref) {
   return ref.watch(statsRepositoryProvider).latestPostsWithViews(limit: 6);
 });
 
-/// ✅ اضافه شد: نام‌های مستعار (alias) که در UI استفاده می‌شن
+/// نام‌های مستعار (alias) برای استفاده در UI.
+/// توجه: این‌ها Provider هستند — نه AsyncValue.
+/// برای دسترسی به داده، از `ref.watch(productsViewsAsync)` استفاده کن.
 final productsViewsAsync = dashboardLatestProductsProvider;
 final postsViewsAsync = dashboardLatestPostsProvider;
-
 
 String _fmtNum(int n) {
   final s = n.abs().toString();
@@ -67,8 +72,7 @@ String _pad2(int n) => n < 10 ? '0$n' : '$n';
 String _jalaliWithTime(DateTime? d) {
   if (d == null) return '—';
   final local = d.toLocal();
-  final date =
-      '${local.year}/${_pad2(local.month)}/${_pad2(local.day)}';
+  final date = '${local.year}/${_pad2(local.month)}/${_pad2(local.day)}';
   final time = '${_pad2(local.hour)}:${_pad2(local.minute)}';
   return '$date  ·  $time';
 }
@@ -195,6 +199,11 @@ class DashboardPage extends ConsumerWidget {
     final statsAsync = ref.watch(dashboardStatsProvider);
     final loginsAsync = ref.watch(dashboardRecentLoginsProvider);
 
+    // 🔴 اصلاح شد: به جای فراخوانی مستقیم .when() روی Provider،
+    // از ref.watch(provider) استفاده می‌کنیم تا AsyncValue بگیریم.
+    final productsAsync = ref.watch(productsViewsAsync);
+    final postsAsync = ref.watch(postsViewsAsync);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -258,12 +267,13 @@ class DashboardPage extends ConsumerWidget {
             // —— Latest products views ——
             const _SectionLabel(title: 'بازدید محصولات جدید'),
             const SizedBox(height: 10),
-            productsViewsAsync.when(
+            productsAsync.when(
               loading: () => const _LoginsSkeleton(),
               error: (e, _) => _ErrorSoft(
                 message: 'بازدید محصولات در دسترس نیست',
                 detail: e.toString(),
-                onRetry: () => ref.invalidate(dashboardLatestProductsProvider),
+                onRetry: () =>
+                    ref.invalidate(dashboardLatestProductsProvider),
               ),
               data: (items) => _ViewsListCard(
                 items: items,
@@ -276,7 +286,7 @@ class DashboardPage extends ConsumerWidget {
             // —— Latest posts views ——
             const _SectionLabel(title: 'بازدید مقالات جدید'),
             const SizedBox(height: 10),
-            postsViewsAsync.when(
+            postsAsync.when(
               loading: () => const _LoginsSkeleton(),
               error: (e, _) => _ErrorSoft(
                 message: 'بازدید مقالات در دسترس نیست',
@@ -415,7 +425,8 @@ class _StatsGrid extends StatelessWidget {
             crossAxisSpacing: 10,
             childAspectRatio: cross == 4 ? 1.55 : 1.45,
           ),
-          itemBuilder: (_, i) => _AnimatedStatCard(data: cards[i], delayMs: i * 80),
+          itemBuilder: (_, i) =>
+              _AnimatedStatCard(data: cards[i], delayMs: i * 80),
         );
       },
     );
@@ -744,7 +755,6 @@ class _ErrorSoft extends StatelessWidget {
   }
 }
 
-
 class _ViewsListCard extends StatelessWidget {
   final List<TopContentItem> items;
   final String emptyText;
@@ -767,7 +777,8 @@ class _ViewsListCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border),
         ),
-        child: Text(emptyText, style: TextStyle(color: AppColors.textSecondary)),
+        child:
+            Text(emptyText, style: TextStyle(color: AppColors.textSecondary)),
       );
     }
     return Container(
