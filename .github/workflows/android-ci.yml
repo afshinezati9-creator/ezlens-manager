@@ -1,4 +1,4 @@
-# Path in repo: .github/workflows/android-ci.yml
+# Path: .github/workflows/android-ci.yml
 name: Build Android APK
 
 on:
@@ -8,15 +8,15 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -27,60 +27,84 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Flutter version
+        run: flutter --version
+
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Gradle network resilience
+      - name: Gradle resilience (timeouts + retries)
         run: |
           mkdir -p ~/.gradle
-          cat >> ~/.gradle/gradle.properties << 'EOF'
+          cat > ~/.gradle/gradle.properties << 'EOF'
           org.gradle.daemon=false
-          org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8
-          systemProp.org.gradle.internal.http.connectionTimeout=120000
-          systemProp.org.gradle.internal.http.socketTimeout=120000
-          systemProp.org.gradle.internal.repository.max.retries=10
-          systemProp.org.gradle.internal.repository.max.tentatives=10
-          systemProp.org.gradle.internal.repository.initial.backoff=2000
+          org.gradle.parallel=true
+          org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
+          systemProp.org.gradle.internal.http.connectionTimeout=180000
+          systemProp.org.gradle.internal.http.socketTimeout=180000
+          systemProp.org.gradle.internal.repository.max.retries=15
+          systemProp.org.gradle.internal.repository.max.tentatives=15
+          systemProp.org.gradle.internal.repository.initial.backoff=3000
           EOF
 
       - name: Pub get
         run: flutter pub get
 
-      - name: Ensure api_config exists
+      - name: Ensure api_config.dart
         run: |
           if [ ! -f lib/core/config/api_config.dart ]; then
             if [ -f lib/core/config/api_config.example.dart ]; then
               cp lib/core/config/api_config.example.dart lib/core/config/api_config.dart
             else
               mkdir -p lib/core/config
-              printf '%s\n' \
-                'class ApiConfig {' \
-                "  static const String wpBaseUrl = 'https://ezlens.ir';" \
-                "  static const String wpUsername = '';" \
-                "  static const String wpAppPassword = '';" \
-                "  static const String wcConsumerKey = '';" \
-                "  static const String wcConsumerSecret = '';" \
-                '}' > lib/core/config/api_config.dart
+              cat > lib/core/config/api_config.dart << 'DART'
+          class ApiConfig {
+            static const String wpBaseUrl = 'https://ezlens.ir';
+            static const String wpUsername = '';
+            static const String wpAppPassword = '';
+            static const String wcConsumerKey = '';
+            static const String wcConsumerSecret = '';
+          }
+          DART
             fi
           fi
 
-      # Maven Central sometimes returns HTTP 429 on shared runners — retry with backoff
-      - name: Build APK (with retries)
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 30
-          max_attempts: 4
-          retry_wait_seconds: 90
-          command: flutter build apk --release
+      - name: Flutter analyze (non-blocking)
+        continue-on-error: true
+        run: flutter analyze --no-fatal-infos || true
 
-      - name: Upload APK artifact
+      - name: Build APK
+        id: build
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          flutter build apk --release 2>&1 | tee build-log.txt
+          echo "BUILD_EXIT=${PIPESTATUS[0]}" >> "$GITHUB_ENV"
+
+      - name: Retry build after cooldown (Maven 429 / flaky network)
+        if: env.BUILD_EXIT != '0'
+        run: |
+          echo "First build failed. Waiting 2 minutes then retry..."
+          sleep 120
+          flutter build apk --release 2>&1 | tee -a build-log.txt
+
+      - name: Upload build log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build-log.txt
+          if-no-files-found: ignore
+
+      - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ezlens-manager-apk
