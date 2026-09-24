@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "ir.ezlens.ezlens_manager"
-    compileSdk = 35
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -21,14 +21,13 @@ android {
     defaultConfig {
         applicationId = "ir.ezlens.ezlens_manager"
         minSdk = 23
-        targetSdk = 35
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     buildTypes {
         release {
-            // CI installs with debug signing; replace with release keystore later
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             isShrinkResources = false

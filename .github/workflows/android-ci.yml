@@ -35,9 +35,9 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
+          key: ${{ runner.os }}-gradle9-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
           restore-keys: |
-            ${{ runner.os }}-gradle-
+            ${{ runner.os }}-gradle9-
 
       - name: Gradle resilience
         run: |
@@ -78,6 +78,7 @@ jobs:
       - name: Build APK
         run: |
           set -o pipefail
+          # Match Flutter-required toolchain (Gradle 9.1 / AGP 9 / Kotlin 2.2.20+)
           flutter build apk --release 2>&1 | tee build-log.txt
 
       - name: Upload build log
