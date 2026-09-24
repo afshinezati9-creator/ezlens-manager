@@ -123,3 +123,5 @@ jobs:
           name: ezlens-manager-apk
           path: build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
+
+# Rebuild marker: splash startup fix 2026-09-24
