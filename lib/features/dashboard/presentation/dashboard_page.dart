@@ -45,6 +45,10 @@ final dashboardLatestPostsProvider =
   return ref.watch(statsRepositoryProvider).latestPostsWithViews(limit: 6);
 });
 
+/// ✅ اضافه شد: نام‌های مستعار (alias) که در UI استفاده می‌شن
+final productsViewsAsync = dashboardLatestProductsProvider;
+final postsViewsAsync = dashboardLatestPostsProvider;
+
 
 String _fmtNum(int n) {
   final s = n.abs().toString();
@@ -250,7 +254,6 @@ class DashboardPage extends ConsumerWidget {
               data: (users) => _RecentLoginsCard(users: users),
             ),
             const SizedBox(height: 22),
-
 
             // —— Latest products views ——
             const _SectionLabel(title: 'بازدید محصولات جدید'),
