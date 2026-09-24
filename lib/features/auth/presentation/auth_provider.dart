@@ -14,12 +14,14 @@ enum AuthStatus {
 class AuthState {
   final AuthStatus status;
   final String? errorMessage;
+  final bool biometricUnlocked;
   final bool otpSent;
   final String? otpMobile;
 
   const AuthState({
     this.status = AuthStatus.initial,
     this.errorMessage,
+    this.biometricUnlocked = false,
     this.otpSent = false,
     this.otpMobile,
   });
@@ -28,12 +30,14 @@ class AuthState {
     AuthStatus? status,
     String? errorMessage,
     bool clearError = false,
+    bool? biometricUnlocked,
     bool? otpSent,
     String? otpMobile,
   }) {
     return AuthState(
       status: status ?? this.status,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      biometricUnlocked: biometricUnlocked ?? this.biometricUnlocked,
       otpSent: otpSent ?? this.otpSent,
       otpMobile: otpMobile ?? this.otpMobile,
     );
@@ -41,32 +45,40 @@ class AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier(this._repo) : super(const AuthState());
+  AuthNotifier(this._repository) : super(const AuthState()) {
+    _checkSession();
+  }
 
-  final AuthRepository _repo;
+  final AuthRepository _repository;
+
+  Future<void> _checkSession() async {
+    final loggedIn = await _repository.isLoggedIn();
+    state = AuthState(
+      status:
+          loggedIn ? AuthStatus.authenticated : AuthStatus.unauthenticated,
+      biometricUnlocked: false,
+    );
+  }
 
   Future<bool> login({
     required String username,
     required String password,
   }) async {
-    state = state.copyWith(
-      status: AuthStatus.loading,
-      clearError: true,
-    );
+    state = state.copyWith(status: AuthStatus.loading, clearError: true);
     try {
-      await _repo.login(username: username, password: password);
-      state = state.copyWith(status: AuthStatus.authenticated);
+      await _repository.login(username: username, password: password);
+      state = const AuthState(
+        status: AuthStatus.authenticated,
+        biometricUnlocked: true,
+      );
       return true;
     } on ApiException catch (e) {
-      state = state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: e.message,
-      );
+      state = AuthState(status: AuthStatus.error, errorMessage: e.message);
       return false;
-    } catch (e) {
-      state = state.copyWith(
+    } catch (_) {
+      state = const AuthState(
         status: AuthStatus.error,
-        errorMessage: e.toString(),
+        errorMessage: 'خطای غیرمنتظره رخ داد',
       );
       return false;
     }
@@ -75,11 +87,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> sendOtp(String mobile) async {
     state = state.copyWith(status: AuthStatus.loading, clearError: true);
     try {
-      await _repo.sendOtp(mobile);
+      await _repository.sendOtp(mobile);
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         otpSent: true,
         otpMobile: mobile.trim(),
+        biometricUnlocked: false,
       );
       return true;
     } on ApiException catch (e) {
@@ -99,17 +112,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Returns true if fully logged into the app (has Application Password stored).
-  /// If OTP ok but no App Password yet, returns false and sets message.
   Future<bool> verifyOtp({
     required String mobile,
     required String code,
   }) async {
     state = state.copyWith(status: AuthStatus.loading, clearError: true);
     try {
-      final result = await _repo.verifyOtp(mobile: mobile, code: code);
+      final result = await _repository.verifyOtp(mobile: mobile, code: code);
       if (result.loggedIn) {
-        state = state.copyWith(status: AuthStatus.authenticated);
+        state = const AuthState(
+          status: AuthStatus.authenticated,
+          biometricUnlocked: true,
+        );
         return true;
       }
       state = state.copyWith(
@@ -136,19 +150,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  void markBiometricUnlocked() {
+    state = state.copyWith(
+      status: AuthStatus.authenticated,
+      biometricUnlocked: true,
+    );
+  }
+
   Future<void> logout() async {
-    await _repo.logout();
+    await _repository.logout();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 }
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  final api = ref.watch(apiClientProvider);
-  final storage = ref.watch(secureStorageProvider);
-  return AuthRepository(api, storage);
+  return AuthRepository(
+    ref.watch(apiClientProvider),
+    ref.watch(secureStorageProvider),
+  );
 });
 
-final authProvider =
-    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(ref.watch(authRepositoryProvider));
 });
