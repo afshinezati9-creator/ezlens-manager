@@ -16,34 +16,24 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 
-// Force compileSdk 36 when Android plugin is applied (safe: runs during configuration, not afterEvaluate)
+// Force compileSdk 36 on every Android module (app + plugins like file_picker).
+// Do NOT use evaluationDependsOn(":app") — that evaluates early and breaks afterEvaluate.
 subprojects {
-    pluginManager.withPlugin("com.android.library") {
-        val android = extensions.getByName("android")
+    afterEvaluate {
+        val android = extensions.findByName("android") ?: return@afterEvaluate
         try {
-            android.javaClass.getMethod("setCompileSdk", Int::class.javaPrimitiveType)
-                .invoke(android, 36)
-        } catch (_: Exception) {
-            try {
-                android.javaClass.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType)
-                    .invoke(android, 36)
-            } catch (_: Exception) {
-                // ignore
+            val setCompileSdk = android.javaClass.methods.find {
+                it.name == "setCompileSdk" && it.parameterCount == 1
             }
-        }
-    }
-    pluginManager.withPlugin("com.android.application") {
-        val android = extensions.getByName("android")
-        try {
-            android.javaClass.getMethod("setCompileSdk", Int::class.javaPrimitiveType)
-                .invoke(android, 36)
-        } catch (_: Exception) {
-            try {
-                android.javaClass.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType)
-                    .invoke(android, 36)
-            } catch (_: Exception) {
-                // ignore
+            if (setCompileSdk != null) {
+                setCompileSdk.invoke(android, 36)
+            } else {
+                android.javaClass.methods.find {
+                    it.name == "setCompileSdkVersion" && it.parameterCount == 1
+                }?.invoke(android, 36)
             }
+        } catch (_: Exception) {
+            // non-android modules
         }
     }
 }

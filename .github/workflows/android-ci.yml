@@ -35,9 +35,9 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle9c-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
+          key: ${{ runner.os }}-g9d-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
           restore-keys: |
-            ${{ runner.os }}-gradle9c-
+            ${{ runner.os }}-g9d-
 
       - name: Gradle resilience
         run: |
@@ -53,7 +53,7 @@ jobs:
           systemProp.org.gradle.internal.repository.initial.backoff=3000
           EOF
 
-      - name: Lock AGP flags
+      - name: Lock android flags
         run: |
           touch android/gradle.properties
           grep -q '^android.newDsl=' android/gradle.properties \
@@ -62,49 +62,29 @@ jobs:
           grep -q '^android.builtInKotlin=' android/gradle.properties \
             && sed -i 's/^android.builtInKotlin=.*/android.builtInKotlin=true/' android/gradle.properties \
             || echo 'android.builtInKotlin=true' >> android/gradle.properties
+          # Remove dangerous evaluationDependsOn if Flutter reintroduces it
+          sed -i '/evaluationDependsOn/d' android/build.gradle.kts || true
           sed -i 's/compileSdk = [0-9]\+/compileSdk = 36/' android/app/build.gradle.kts || true
           sed -i '/id("org.jetbrains.kotlin.android")/d' android/app/build.gradle.kts || true
           sed -i '/id("kotlin-android")/d' android/app/build.gradle.kts || true
-          # Ensure root build.gradle.kts has NO afterEvaluate / evaluationDependsOn
-          if grep -q 'afterEvaluate\|evaluationDependsOn' android/build.gradle.kts 2>/dev/null; then
-            echo "WARNING: root build.gradle.kts still has afterEvaluate — rewriting safe version"
-          fi
-          cat android/gradle.properties
-
-      - name: Pub get
-        run: flutter pub get
-
-      - name: Ensure api_config.dart
-        run: |
+          # Ensure api_config exists
           if [ ! -f lib/core/config/api_config.dart ]; then
             if [ -f lib/core/config/api_config.example.dart ]; then
               cp lib/core/config/api_config.example.dart lib/core/config/api_config.dart
             else
               mkdir -p lib/core/config
-              cat > lib/core/config/api_config.dart << 'DART'
-          class ApiConfig {
-            static const String wpBaseUrl = 'https://ezlens.ir';
-            static const String wpUsername = '';
-            static const String wpAppPassword = '';
-            static const String wcConsumerKey = '';
-            static const String wcConsumerSecret = '';
-          }
-          DART
+              printf '%s\n' 'class ApiConfig {' "  static const String wpBaseUrl = 'https://ezlens.ir';" "  static const String wpUsername = '';" "  static const String wpAppPassword = '';" "  static const String wcConsumerKey = '';" "  static const String wcConsumerSecret = '';" '}' > lib/core/config/api_config.dart
             fi
           fi
+
+      - name: Pub get
+        run: flutter pub get
 
       - name: Build APK
         run: |
           set -o pipefail
-          grep -q '^android.newDsl=' android/gradle.properties \
-            && sed -i 's/^android.newDsl=.*/android.newDsl=false/' android/gradle.properties \
-            || echo 'android.newDsl=false' >> android/gradle.properties
-          grep -q '^android.builtInKotlin=' android/gradle.properties \
-            && sed -i 's/^android.builtInKotlin=.*/android.builtInKotlin=true/' android/gradle.properties \
-            || echo 'android.builtInKotlin=true' >> android/gradle.properties
+          sed -i '/evaluationDependsOn/d' android/build.gradle.kts || true
           sed -i 's/compileSdk = [0-9]\+/compileSdk = 36/' android/app/build.gradle.kts || true
-          sed -i '/id("org.jetbrains.kotlin.android")/d' android/app/build.gradle.kts || true
-          sed -i '/id("kotlin-android")/d' android/app/build.gradle.kts || true
           flutter build apk --release 2>&1 | tee build-log.txt
 
       - name: Upload build log
@@ -115,11 +95,9 @@ jobs:
           path: build-log.txt
           if-no-files-found: ignore
 
-      - name: List APK outputs
+      - name: List APK
         if: always()
-        run: |
-          find build -name "*.apk" 2>/dev/null || echo "No APK found"
-          ls -la build/app/outputs/flutter-apk/ 2>/dev/null || true
+        run: find build -name "*.apk" 2>/dev/null || true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
