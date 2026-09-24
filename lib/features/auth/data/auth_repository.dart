@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../../core/config/api_config.dart';
+import '../../../core/debug/debug_log_service.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/storage/secure_storage_service.dart';
@@ -9,6 +10,7 @@ import '../../../core/storage/secure_storage_service.dart';
 class AuthRepository {
   final ApiClient _api;
   final SecureStorageService _storage;
+  final _log = DebugLogService.instance;
 
   AuthRepository(this._api, this._storage);
 
@@ -36,13 +38,20 @@ class AuthRepository {
       throw ApiException(message: 'نام کاربری و رمز عبور را وارد کنید');
     }
 
+    await _log.log('SERVER LOGIN: ارسال درخواست به endpoint ورود.');
     try {
       final res = await _dio().post(
         '/wp-json/ezlens/v1/manager/login',
         data: {'username': u, 'password': p},
       );
+      await _log.log('SERVER LOGIN: پاسخ HTTP ' + (res.statusCode?.toString() ?? 'unknown') + ' دریافت شد.');
       await _persistLoginResponse(res);
-    } on ApiException {
+      await _log.log('SERVER LOGIN: پاسخ معتبر بود و اطلاعات نشست ذخیره شد.', level: 'SUCCESS');
+    } on ApiException catch (e) {
+      await _log.log('SERVER LOGIN FAILED: ' + e.message, level: 'ERROR');
+      rethrow;
+    } on DioException catch (e) {
+      await _log.log('SERVER LOGIN NETWORK ERROR: ' + (e.message ?? 'unknown'), level: 'ERROR');
       rethrow;
     } on DioException catch (e) {
       throw ApiException(
