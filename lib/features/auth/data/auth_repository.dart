@@ -51,9 +51,10 @@ class AuthRepository {
       await _log.log('SERVER LOGIN FAILED: ' + e.message, level: 'ERROR');
       rethrow;
     } on DioException catch (e) {
-      await _log.log('SERVER LOGIN NETWORK ERROR: ' + (e.message ?? 'unknown'), level: 'ERROR');
-      rethrow;
-    } on DioException catch (e) {
+      await _log.log(
+        'SERVER LOGIN NETWORK ERROR: ' + (e.message ?? 'unknown'),
+        level: 'ERROR',
+      );
       throw ApiException(
         message: e.message ?? 'ارتباط با سرور برقرار نشد',
       );
