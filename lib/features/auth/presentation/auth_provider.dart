@@ -14,87 +14,141 @@ enum AuthStatus {
 class AuthState {
   final AuthStatus status;
   final String? errorMessage;
-  final bool biometricUnlocked;
+  final bool otpSent;
+  final String? otpMobile;
 
   const AuthState({
     this.status = AuthStatus.initial,
     this.errorMessage,
-    this.biometricUnlocked = false,
+    this.otpSent = false,
+    this.otpMobile,
   });
 
   AuthState copyWith({
     AuthStatus? status,
     String? errorMessage,
-    bool? biometricUnlocked,
+    bool clearError = false,
+    bool? otpSent,
+    String? otpMobile,
   }) {
     return AuthState(
       status: status ?? this.status,
-      errorMessage: errorMessage,
-      biometricUnlocked: biometricUnlocked ?? this.biometricUnlocked,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      otpSent: otpSent ?? this.otpSent,
+      otpMobile: otpMobile ?? this.otpMobile,
     );
   }
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  final AuthRepository _repository;
+  AuthNotifier(this._repo) : super(const AuthState());
 
-  AuthNotifier(this._repository) : super(const AuthState()) {
-    _checkSession();
-  }
-
-  Future<void> _checkSession() async {
-    final loggedIn = await _repository.isLoggedIn();
-    state = AuthState(
-      status:
-          loggedIn ? AuthStatus.authenticated : AuthStatus.unauthenticated,
-      biometricUnlocked: false,
-    );
-  }
+  final AuthRepository _repo;
 
   Future<bool> login({
     required String username,
     required String password,
   }) async {
-    state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
+    state = state.copyWith(
+      status: AuthStatus.loading,
+      clearError: true,
+    );
     try {
-      await _repository.login(username: username, password: password);
-      state = const AuthState(
-        status: AuthStatus.authenticated,
-        biometricUnlocked: true,
-      );
+      await _repo.login(username: username, password: password);
+      state = state.copyWith(status: AuthStatus.authenticated);
       return true;
     } on ApiException catch (e) {
-      state = AuthState(status: AuthStatus.error, errorMessage: e.message);
-      return false;
-    } catch (_) {
-      state = const AuthState(
+      state = state.copyWith(
         status: AuthStatus.error,
-        errorMessage: 'خطای غیرمنتظره رخ داد',
+        errorMessage: e.message,
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: e.toString(),
       );
       return false;
     }
   }
 
-  void markBiometricUnlocked() {
-    state = state.copyWith(
-      status: AuthStatus.authenticated,
-      biometricUnlocked: true,
-    );
+  Future<bool> sendOtp(String mobile) async {
+    state = state.copyWith(status: AuthStatus.loading, clearError: true);
+    try {
+      await _repo.sendOtp(mobile);
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        otpSent: true,
+        otpMobile: mobile.trim(),
+      );
+      return true;
+    } on ApiException catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: e.message,
+        otpSent: false,
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: e.toString(),
+        otpSent: false,
+      );
+      return false;
+    }
+  }
+
+  /// Returns true if fully logged into the app (has Application Password stored).
+  /// If OTP ok but no App Password yet, returns false and sets message.
+  Future<bool> verifyOtp({
+    required String mobile,
+    required String code,
+  }) async {
+    state = state.copyWith(status: AuthStatus.loading, clearError: true);
+    try {
+      final result = await _repo.verifyOtp(mobile: mobile, code: code);
+      if (result.loggedIn) {
+        state = state.copyWith(status: AuthStatus.authenticated);
+        return true;
+      }
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        errorMessage:
+            'کد تأیید درست بود. برای ورود به پنل مدیریت، از تب «رمز برنامه» '
+            'با Application Password وارد شوید (API مدیریت به آن نیاز دارد).',
+        otpSent: true,
+        otpMobile: result.mobile,
+      );
+      return false;
+    } on ApiException catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: e.message,
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: e.toString(),
+      );
+      return false;
+    }
   }
 
   Future<void> logout() async {
-    await _repository.logout();
+    await _repo.logout();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 }
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(
-    ref.watch(apiClientProvider),
-    ref.watch(secureStorageProvider),
-  );
+  final api = ref.watch(apiClientProvider);
+  final storage = ref.watch(secureStorageProvider);
+  return AuthRepository(api, storage);
 });
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authProvider =
+    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(ref.watch(authRepositoryProvider));
 });

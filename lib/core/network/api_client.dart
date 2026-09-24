@@ -56,11 +56,14 @@ class ApiClient {
     final hasExistingAuth =
         options.headers.containsKey('Authorization');
 
-    if (!isWooCommerce && !hasExistingAuth) {
-      final token = await _storage.getAccessToken();
-
-      if (token != null && token.isNotEmpty) {
-        options.headers['Authorization'] = 'Bearer $token';
+    if (!hasExistingAuth) {
+      final u = await _storage.getWpUsername();
+      final p = await _storage.getWpAppPassword();
+      final user = (u != null && u.isNotEmpty) ? u : ApiConfig.wpUsername;
+      final pass = (p != null && p.isNotEmpty) ? p : ApiConfig.wpAppPassword;
+      if (user.isNotEmpty && pass.isNotEmpty) {
+        options.headers['Authorization'] =
+            'Basic ${base64Encode(utf8.encode('$user:$pass'))}';
       }
     }
 
@@ -200,13 +203,18 @@ class ApiClient {
   // احراز هویت WordPress Application Password
   // ============================================================
 
-  String _wpAuth() {
-    final raw =
-        '${ApiConfig.wpUsername}:${ApiConfig.wpAppPassword}';
-
-    return 'Basic ${base64Encode(
-      utf8.encode(raw),
-    )}';
+  /// Prefer credentials saved at login; fall back to ApiConfig constants.
+  Future<String> _wpAuth() async {
+    final storedUser = await _storage.getWpUsername();
+    final storedPass = await _storage.getWpAppPassword();
+    final u = (storedUser != null && storedUser.isNotEmpty)
+        ? storedUser
+        : ApiConfig.wpUsername;
+    final p = (storedPass != null && storedPass.isNotEmpty)
+        ? storedPass
+        : ApiConfig.wpAppPassword;
+    final raw = '$u:$p';
+    return 'Basic ${base64Encode(utf8.encode(raw))}';
   }
 
   // ============================================================
@@ -216,13 +224,13 @@ class ApiClient {
   Future<Response<T>> wcGet<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
-  }) {
+  }) async {
     return _dio.get<T>(
       path,
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          'Authorization': _wpAuth(),
+          'Authorization': await _wpAuth(),
         },
       ),
     );
@@ -235,13 +243,13 @@ class ApiClient {
   Future<Response<T>> wcPost<T>(
     String path, {
     dynamic data,
-  }) {
+  }) async {
     return _dio.post<T>(
       path,
       data: data,
       options: Options(
         headers: {
-          'Authorization': _wpAuth(),
+          'Authorization': await _wpAuth(),
         },
       ),
     );
@@ -254,13 +262,13 @@ class ApiClient {
   Future<Response<T>> wcPut<T>(
     String path, {
     dynamic data,
-  }) {
+  }) async {
     return _dio.put<T>(
       path,
       data: data,
       options: Options(
         headers: {
-          'Authorization': _wpAuth(),
+          'Authorization': await _wpAuth(),
         },
       ),
     );
@@ -273,13 +281,13 @@ class ApiClient {
   Future<Response<T>> wcDelete<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
-  }) {
+  }) async {
     return _dio.delete<T>(
       path,
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          'Authorization': _wpAuth(),
+          'Authorization': await _wpAuth(),
         },
       ),
     );
@@ -292,13 +300,13 @@ class ApiClient {
   Future<Response<T>> wpGet<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
-  }) {
+  }) async {
     return _dio.get<T>(
       path,
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          'Authorization': _wpAuth(),
+          'Authorization': await _wpAuth(),
         },
       ),
     );
@@ -312,14 +320,14 @@ class ApiClient {
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
-  }) {
+  }) async {
     return _dio.post<T>(
       path,
       data: data,
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          'Authorization': _wpAuth(),
+          'Authorization': await _wpAuth(),
         },
       ),
     );
@@ -333,14 +341,14 @@ class ApiClient {
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
-  }) {
+  }) async {
     return _dio.put<T>(
       path,
       data: data,
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          'Authorization': _wpAuth(),
+          'Authorization': await _wpAuth(),
         },
       ),
     );
@@ -353,13 +361,13 @@ class ApiClient {
   Future<Response<T>> wpDelete<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
-  }) {
+  }) async {
     return _dio.delete<T>(
       path,
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          'Authorization': _wpAuth(),
+          'Authorization': await _wpAuth(),
         },
       ),
     );
@@ -373,13 +381,8 @@ class ApiClient {
     String path, {
     required FormData formData,
     void Function(int sent, int total)? onSendProgress,
-  }) {
-    final raw =
-        '${ApiConfig.wpUsername}:${ApiConfig.wpAppPassword}';
-
-    final auth = 'Basic ${base64Encode(
-      utf8.encode(raw),
-    )}';
+  }) async {
+    final auth = await _wpAuth();
 
     return _dio.post<T>(
       path,

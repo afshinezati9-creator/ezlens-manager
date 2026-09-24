@@ -1,11 +1,11 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_button.dart';
-import '../../../core/widgets/app_text_field.dart';
 import 'auth_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -15,10 +15,15 @@ class LoginPage extends ConsumerStatefulWidget {
   ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends ConsumerState<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tab;
+
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _captchaController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _otpController = TextEditingController();
 
   bool _obscurePassword = true;
   int _num1 = 0;
@@ -28,6 +33,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   void initState() {
     super.initState();
+    _tab = TabController(length: 2, vsync: this);
     _generateCaptcha();
   }
 
@@ -41,34 +47,96 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     });
   }
 
-  Future<void> _handleLogin() async {
-    // بررسی کپچا
+  Future<void> _handlePasswordLogin() async {
     final answer = int.tryParse(_captchaController.text.trim());
     if (answer != _num1 + _num2) {
-      setState(() {
-        _captchaError = 'پاسخ کپچا اشتباه است';
-      });
+      setState(() => _captchaError = 'پاسخ کپچا اشتباه است');
       _generateCaptcha();
       return;
     }
-
     final success = await ref.read(authProvider.notifier).login(
           username: _usernameController.text.trim(),
           password: _passwordController.text,
         );
+    if (success && mounted) context.go('/dashboard');
+  }
 
-    if (success && mounted) {
+  Future<void> _handleSendOtp() async {
+    final ok = await ref.read(authProvider.notifier).sendOtp(_phoneController.text);
+    if (ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('کد تأیید ارسال شد')),
+      );
+    }
+  }
+
+  Future<void> _handleVerifyOtp() async {
+    final mobile = ref.read(authProvider).otpMobile ?? _phoneController.text;
+    final ok = await ref.read(authProvider.notifier).verifyOtp(
+          mobile: mobile,
+          code: _otpController.text,
+        );
+    if (ok && mounted) {
       context.go('/dashboard');
+    } else if (mounted) {
+      // OTP ok but need App Password — switch tab
+      _tab.animateTo(0);
     }
   }
 
   @override
   void dispose() {
+    _tab.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     _captchaController.dispose();
+    _phoneController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
+
+  InputDecoration _dec({
+    required String hint,
+    Widget? suffix,
+    String? errorText,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: AppColors.textMuted),
+      errorText: errorText,
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: AppColors.surface,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _label(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -82,150 +150,227 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(AppSpacing.xxl),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
+              constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // لوگو کوچک
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
-                      'https://ezlens.ir/wp-content/uploads/2026/07/logo-500x500-1.webp',
-                      width: 72,
-                      height: 72,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) {
-                        return Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'Ez',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(18),
                     ),
+                    child: const Icon(Icons.visibility_outlined,
+                        color: Colors.white, size: 36),
                   ),
-                  const SizedBox(height: AppSpacing.xl),
+                  const SizedBox(height: AppSpacing.lg),
                   const Text(
-                    'ورود به پنل مدیریت',
+                    'EzLens Manager',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 22,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   const Text(
-                    'ایزی‌لنز منیجر',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
+                    'ورود مدیر',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 14),
                   ),
-                  const SizedBox(height: AppSpacing.xxxl),
-
-                  // فرم
-                  AppTextField(
-                    controller: _usernameController,
-                    label: 'نام کاربری',
-                    hint: 'نام کاربری یا ایمیل',
-                    prefixIcon: const Icon(Icons.person_outline, size: 20),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  AppTextField(
-                    controller: _passwordController,
-                    label: 'رمز عبور',
-                    hint: 'رمز عبور خود را وارد کنید',
-                    obscureText: _obscurePassword,
-                    prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        size: 20,
-                      ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // کپچا
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AppTextField(
-                          controller: _captchaController,
-                          label: 'کپچا',
-                          hint: '$_num1 + $_num2 = ?',
-                          keyboardType: TextInputType.number,
-                          errorText: _captchaError,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 22),
-                        child: IconButton(
-                          onPressed: _generateCaptcha,
-                          icon: const Icon(Icons.refresh_rounded),
-                          tooltip: 'کپچای جدید',
-                          style: IconButton.styleFrom(
-                            backgroundColor: AppColors.surfaceHover,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // پیام خطا
-                  if (authState.errorMessage != null) ...[
-                    const SizedBox(height: AppSpacing.lg),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: AppColors.dangerBg,
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                      ),
-                      child: Text(
-                        authState.errorMessage!,
-                        style: const TextStyle(
-                          color: AppColors.danger,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-
                   const SizedBox(height: AppSpacing.xxl),
-                  AppButton(
-                    label: 'ورود',
-                    onPressed: isLoading ? null : _handleLogin,
-                    isLoading: isLoading,
-                    isExpanded: true,
-                    size: AppButtonSize.lg,
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: TabBar(
+                      controller: _tab,
+                      labelColor: AppColors.primary,
+                      unselectedLabelColor: AppColors.textMuted,
+                      indicatorColor: AppColors.primary,
+                      tabs: const [
+                        Tab(text: 'رمز برنامه'),
+                        Tab(text: 'کد پیامک'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  SizedBox(
+                    height: 420,
+                    child: TabBarView(
+                      controller: _tab,
+                      children: [
+                        _passwordTab(isLoading, authState),
+                        _otpTab(isLoading, authState),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _passwordTab(bool isLoading, AuthState authState) {
+    return ListView(
+      children: [
+        _label('نام کاربری (ایمیل یا نام کاربری وردپرس)'),
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: TextField(
+            controller: _usernameController,
+            keyboardType: TextInputType.emailAddress,
+            textAlign: TextAlign.left,
+            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            decoration: _dec(hint: 'info@example.com'),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _label('Application Password'),
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: TextField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            textAlign: TextAlign.left,
+            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            decoration: _dec(
+              hint: 'xxxx xxxx xxxx xxxx',
+              suffix: IconButton(
+                icon: Icon(
+                  _obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: AppColors.textMuted,
+                ),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        const Text(
+          'رمز حساب وردپرس کار نمی‌کند. از پیشخوان ← کاربران ← Application Passwords یک رمز بسازید.',
+          style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.4),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _label('کپچا: $_num1 + $_num2 = ؟'),
+        Row(
+          children: [
+            Expanded(
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: TextField(
+                  controller: _captchaController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.left,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: _dec(hint: '?', errorText: _captchaError),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: _generateCaptcha,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ],
+        ),
+        if (authState.errorMessage != null) ...[
+          const SizedBox(height: AppSpacing.lg),
+          _errorBox(authState.errorMessage!),
+        ],
+        const SizedBox(height: AppSpacing.xl),
+        AppButton(
+          label: 'ورود',
+          onPressed: isLoading ? null : _handlePasswordLogin,
+          isLoading: isLoading,
+          isExpanded: true,
+          size: AppButtonSize.lg,
+        ),
+      ],
+    );
+  }
+
+  Widget _otpTab(bool isLoading, AuthState authState) {
+    final otpSent = authState.otpSent;
+    return ListView(
+      children: [
+        _label('شماره موبایل'),
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: TextField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            textAlign: TextAlign.left,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[\d+]')),
+            ],
+            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            decoration: _dec(hint: '0912xxxxxxx'),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        if (otpSent) ...[
+          _label('کد تأیید'),
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: TextField(
+              controller: _otpController,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.left,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+              decoration: _dec(hint: '------'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+        if (authState.errorMessage != null) ...[
+          _errorBox(authState.errorMessage!),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+        AppButton(
+          label: otpSent ? 'تأیید کد' : 'ارسال کد',
+          onPressed: isLoading
+              ? null
+              : (otpSent ? _handleVerifyOtp : _handleSendOtp),
+          isLoading: isLoading,
+          isExpanded: true,
+          size: AppButtonSize.lg,
+        ),
+        if (otpSent) ...[
+          const SizedBox(height: AppSpacing.md),
+          TextButton(
+            onPressed: isLoading ? null : _handleSendOtp,
+            child: const Text('ارسال مجدد کد'),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.md),
+        const Text(
+          'ورود پیامکی هویت را تأیید می‌کند. برای دسترسی API مدیریت پس از تأیید، یک‌بار با Application Password وارد شوید.',
+          style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.4),
+        ),
+      ],
+    );
+  }
+
+  Widget _errorBox(String msg) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.dangerBg,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      ),
+      child: Text(
+        msg,
+        style: const TextStyle(color: AppColors.danger, fontSize: 13, height: 1.4),
       ),
     );
   }
