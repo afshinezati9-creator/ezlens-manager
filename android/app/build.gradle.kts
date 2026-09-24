@@ -28,6 +28,7 @@ android {
 
     buildTypes {
         release {
+            // CI installs with debug signing; replace with release keystore later
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             isShrinkResources = false
