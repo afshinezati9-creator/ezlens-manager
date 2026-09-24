@@ -16,27 +16,34 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 
+// Force compileSdk 36 when Android plugin is applied (safe: runs during configuration, not afterEvaluate)
 subprojects {
-    project.evaluationDependsOn(":app")
-}
-
-// Force compileSdk 36 on plugin modules (file_picker, etc.)
-subprojects {
-    afterEvaluate {
-        val androidExt = extensions.findByName("android") ?: return@afterEvaluate
+    pluginManager.withPlugin("com.android.library") {
+        val android = extensions.getByName("android")
         try {
-            val setCompileSdk = androidExt.javaClass.methods.find {
-                it.name == "setCompileSdk" && it.parameterCount == 1
-            }
-            if (setCompileSdk != null) {
-                setCompileSdk.invoke(androidExt, 36)
-            } else {
-                androidExt.javaClass.methods.find {
-                    it.name == "setCompileSdkVersion" && it.parameterCount == 1
-                }?.invoke(androidExt, 36)
-            }
+            android.javaClass.getMethod("setCompileSdk", Int::class.javaPrimitiveType)
+                .invoke(android, 36)
         } catch (_: Exception) {
-            // ignore
+            try {
+                android.javaClass.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType)
+                    .invoke(android, 36)
+            } catch (_: Exception) {
+                // ignore
+            }
+        }
+    }
+    pluginManager.withPlugin("com.android.application") {
+        val android = extensions.getByName("android")
+        try {
+            android.javaClass.getMethod("setCompileSdk", Int::class.javaPrimitiveType)
+                .invoke(android, 36)
+        } catch (_: Exception) {
+            try {
+                android.javaClass.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType)
+                    .invoke(android, 36)
+            } catch (_: Exception) {
+                // ignore
+            }
         }
     }
 }
