@@ -6,7 +6,9 @@ plugins {
 
 android {
     namespace = "ir.ezlens.ezlens_manager"
-    compileSdk = flutter.compileSdkVersion
+
+    // 🔴 اصلاح شد: از flutter.compileSdkVersion به 36
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -15,12 +17,12 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "ir.ezlens.ezlens_manager"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+
+        // 🔴 اصلاح شد: local_auth حداقل 23 می‌خواد
+        minSdk = 23
+        targetSdk = 36
+
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -30,6 +32,14 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
 }
@@ -42,4 +52,9 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // 🔴 اضافه شد: برای local_auth (بیومتریک)
+    implementation("androidx.biometric:biometric:1.1.0")
 }
