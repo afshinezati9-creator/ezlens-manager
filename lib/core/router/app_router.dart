@@ -133,19 +133,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       final location = state.matchedLocation;
 
-      final isAuthRoute =
-          location == '/' || location == '/login';
+      final isLoginRoute = location == '/login';
+      final isSplashRoute = location == '/';
 
-      if (isLoading && location != '/') {
-        return '/';
+      // Splash is only a visual startup screen. Once AuthNotifier finishes,
+      // the router decides where the user must go.
+      if (isLoading) {
+        return isSplashRoute ? null : '/';
       }
 
-      if (!isLoggedIn && !isAuthRoute && !isLoading) {
+      if (isLoggedIn) {
+        if (isSplashRoute || isLoginRoute) {
+          return '/dashboard';
+        }
+        return null;
+      }
+
+      // Any startup/auth failure must still leave the user at login.
+      if (isSplashRoute) {
         return '/login';
       }
 
-      if (isLoggedIn && location == '/login') {
-        return '/dashboard';
+      if (!isLoginRoute) {
+        return '/login';
       }
 
       return null;
