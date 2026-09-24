@@ -20,23 +20,23 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Force every Android library/app module (including plugins) to compileSdk 36
+// Force compileSdk 36 on plugin modules (file_picker, etc.)
 subprojects {
     afterEvaluate {
-        val androidExt = extensions.findByName("android")
-        if (androidExt != null) {
-            try {
-                val method = androidExt.javaClass.methods.find { it.name == "setCompileSdkVersion" && it.parameterCount == 1 }
-                if (method != null) {
-                    method.invoke(androidExt, 36)
-                } else {
-                    // AGP 8+/9 property style
-                    val compileSdkField = androidExt.javaClass.methods.find { it.name == "setCompileSdk" && it.parameterCount == 1 }
-                    compileSdkField?.invoke(androidExt, 36)
-                }
-            } catch (_: Exception) {
-                // ignore modules without standard android extension
+        val androidExt = extensions.findByName("android") ?: return@afterEvaluate
+        try {
+            val setCompileSdk = androidExt.javaClass.methods.find {
+                it.name == "setCompileSdk" && it.parameterCount == 1
             }
+            if (setCompileSdk != null) {
+                setCompileSdk.invoke(androidExt, 36)
+            } else {
+                androidExt.javaClass.methods.find {
+                    it.name == "setCompileSdkVersion" && it.parameterCount == 1
+                }?.invoke(androidExt, 36)
+            }
+        } catch (_: Exception) {
+            // ignore
         }
     }
 }

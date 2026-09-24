@@ -35,9 +35,9 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle9-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
+          key: ${{ runner.os }}-gradle9b-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
           restore-keys: |
-            ${{ runner.os }}-gradle9-
+            ${{ runner.os }}-gradle9b-
 
       - name: Gradle resilience
         run: |
@@ -53,21 +53,24 @@ jobs:
           systemProp.org.gradle.internal.repository.initial.backoff=3000
           EOF
 
-      - name: Ensure compileSdk 36 in app (Flutter may rewrite)
+      - name: Lock AGP DSL flags (Flutter may rewrite files)
         run: |
-          # After flutter upgrades files, re-assert compileSdk
+          # Ensure opt-out of AGP 9 new DSL + use built-in Kotlin
+          touch android/gradle.properties
+          grep -q '^android.newDsl=' android/gradle.properties \
+            && sed -i 's/^android.newDsl=.*/android.newDsl=false/' android/gradle.properties \
+            || echo 'android.newDsl=false' >> android/gradle.properties
+          grep -q '^android.builtInKotlin=' android/gradle.properties \
+            && sed -i 's/^android.builtInKotlin=.*/android.builtInKotlin=true/' android/gradle.properties \
+            || echo 'android.builtInKotlin=true' >> android/gradle.properties
+          # Pin compileSdk on app
           if [ -f android/app/build.gradle.kts ]; then
             sed -i 's/compileSdk = [0-9]\+/compileSdk = 36/' android/app/build.gradle.kts || true
-            sed -i 's/compileSdkVersion [0-9]\+/compileSdk = 36/' android/app/build.gradle.kts || true
-            grep -n "compileSdk" android/app/build.gradle.kts || true
           fi
-          # Ensure newDsl stays off
-          if ! grep -q "android.newDsl=false" android/gradle.properties 2>/dev/null; then
-            echo "android.newDsl=false" >> android/gradle.properties
-          fi
-          if ! grep -q "android.builtInKotlin=false" android/gradle.properties 2>/dev/null; then
-            echo "android.builtInKotlin=false" >> android/gradle.properties
-          fi
+          echo "=== gradle.properties ==="
+          cat android/gradle.properties
+          echo "=== app plugins block ==="
+          head -20 android/app/build.gradle.kts
 
       - name: Pub get
         run: flutter pub get
@@ -94,8 +97,17 @@ jobs:
       - name: Build APK
         run: |
           set -o pipefail
-          # Re-pin compileSdk right before build (Flutter "Upgrading build.gradle.kts" may change it)
+          # Re-lock flags after Flutter "Upgrading build.gradle.kts"
+          grep -q '^android.newDsl=' android/gradle.properties \
+            && sed -i 's/^android.newDsl=.*/android.newDsl=false/' android/gradle.properties \
+            || echo 'android.newDsl=false' >> android/gradle.properties
+          grep -q '^android.builtInKotlin=' android/gradle.properties \
+            && sed -i 's/^android.builtInKotlin=.*/android.builtInKotlin=true/' android/gradle.properties \
+            || echo 'android.builtInKotlin=true' >> android/gradle.properties
           sed -i 's/compileSdk = [0-9]\+/compileSdk = 36/' android/app/build.gradle.kts || true
+          # Remove kotlin plugin line if Flutter re-added it
+          sed -i '/id("org.jetbrains.kotlin.android")/d' android/app/build.gradle.kts || true
+          sed -i '/id("kotlin-android")/d' android/app/build.gradle.kts || true
           flutter build apk --release 2>&1 | tee build-log.txt
 
       - name: Upload build log
