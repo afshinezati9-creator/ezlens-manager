@@ -1,0 +1,57 @@
+# Place this file at: .github/workflows/android-ci.yml
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Ensure api_config exists
+        run: |
+          if [ ! -f lib/core/config/api_config.dart ]; then
+            if [ -f lib/core/config/api_config.example.dart ]; then
+              cp lib/core/config/api_config.example.dart lib/core/config/api_config.dart
+            else
+              mkdir -p lib/core/config
+              printf '%s\n' \
+                'class ApiConfig {' \
+                "  static const String wpBaseUrl = 'https://ezlens.ir';" \
+                "  static const String wpUsername = '';" \
+                "  static const String wpAppPassword = '';" \
+                "  static const String wcConsumerKey = '';" \
+                "  static const String wcConsumerSecret = '';" \
+                '}' > lib/core/config/api_config.dart
+            fi
+          fi
+
+      - name: Build APK (release unsigned / debug-friendly)
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ezlens-manager-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
