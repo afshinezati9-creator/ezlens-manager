@@ -29,6 +29,9 @@ dependencies:
   path_provider: ^2.1.2
   permission_handler: ^11.0.1
 
+  # ✅ اضافه شد برای احراز هویت بیومتریک
+  local_auth: ^2.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
