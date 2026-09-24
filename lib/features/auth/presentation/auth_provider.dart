@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/config/api_config.dart';
+import '../../../core/debug/debug_log_service.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/providers.dart';
 import '../data/auth_repository.dart';
@@ -50,20 +52,45 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   final AuthRepository _repository;
+  final _log = DebugLogService.instance;
 
   Future<void> _checkSession() async {
-    final loggedIn = await _repository.isLoggedIn();
-    state = AuthState(
-      status:
-          loggedIn ? AuthStatus.authenticated : AuthStatus.unauthenticated,
-      biometricUnlocked: false,
-    );
+    await _log.log('AUTH START: بررسی وضعیت نشست آغاز شد.');
+    try {
+      if (ApiConfig.demoLoginEnabled) {
+        await _log.log('AUTH MODE: حالت توسعه فعال است؛ صفحه ورود نمایش داده می‌شود.');
+        state = const AuthState(status: AuthStatus.unauthenticated);
+        await _log.log('AUTH READY: کاربر هنوز وارد نشده است.');
+        return;
+      }
+
+      final loggedIn = await _repository.isLoggedIn();
+      await _log.log(
+        'AUTH SESSION: ' +
+            (loggedIn
+                ? 'نشست معتبر پیدا شد.'
+                : 'نشست معتبری پیدا نشد؛ ورود لازم است.'),
+      );
+      state = AuthState(
+        status:
+            loggedIn ? AuthStatus.authenticated : AuthStatus.unauthenticated,
+        biometricUnlocked: false,
+      );
+    } catch (e, st) {
+      await _log.log('AUTH SESSION ERROR: ' + e.toString(), level: 'ERROR');
+      await _log.log('AUTH STACK: ' + st.toString(), level: 'ERROR');
+      state = const AuthState(
+        status: AuthStatus.unauthenticated,
+        errorMessage: 'بررسی نشست انجام نشد؛ لطفاً دوباره وارد شوید.',
+      );
+    }
   }
 
   Future<bool> login({
     required String username,
     required String password,
   }) async {
+    await _log.log('LOGIN: تلاش ورود با نام کاربری شروع شد.');
     state = state.copyWith(status: AuthStatus.loading, clearError: true);
     try {
       await _repository.login(username: username, password: password);
@@ -71,11 +98,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
         status: AuthStatus.authenticated,
         biometricUnlocked: true,
       );
+      await _log.log('LOGIN SUCCESS: ورود با نام کاربری و رمز عبور موفق بود.', level: 'SUCCESS');
       return true;
     } on ApiException catch (e) {
+      await _log.log('LOGIN FAILED: ' + e.message, level: 'ERROR');
       state = AuthState(status: AuthStatus.error, errorMessage: e.message);
       return false;
-    } catch (_) {
+    } catch (e, st) {
+      await _log.log('LOGIN EXCEPTION: ' + e.toString(), level: 'ERROR');
+      await _log.log('LOGIN STACK: ' + st.toString(), level: 'ERROR');
       state = const AuthState(
         status: AuthStatus.error,
         errorMessage: 'خطای غیرمنتظره رخ داد',
@@ -141,6 +172,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
 
   Future<bool> loginWithMasterCode(String code) async {
+    await _log.log('ACCESS CODE: تلاش ورود با کد دسترسی شروع شد.');
     state = state.copyWith(status: AuthStatus.loading, clearError: true);
     try {
       await _repository.loginWithMasterCode(code);
@@ -148,11 +180,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
         status: AuthStatus.authenticated,
         biometricUnlocked: true,
       );
+      await _log.log('ACCESS CODE SUCCESS: ورود با کد دسترسی موفق بود.', level: 'SUCCESS');
       return true;
     } on ApiException catch (e) {
+      await _log.log('ACCESS CODE FAILED: ' + e.message, level: 'ERROR');
       state = AuthState(status: AuthStatus.error, errorMessage: e.message);
       return false;
-    } catch (_) {
+    } catch (e, st) {
+      await _log.log('ACCESS CODE EXCEPTION: ' + e.toString(), level: 'ERROR');
+      await _log.log('ACCESS CODE STACK: ' + st.toString(), level: 'ERROR');
       state = const AuthState(
         status: AuthStatus.error,
         errorMessage: 'خطای غیرمنتظره رخ داد',
