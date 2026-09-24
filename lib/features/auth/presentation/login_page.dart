@@ -24,9 +24,11 @@ class _LoginPageState extends ConsumerState<LoginPage>
   final _captchaController = TextEditingController();
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
+  final _masterController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _otpStep = false; // local UI: show code field after send
+  bool _obscureMaster = true;
+  bool _otpStep = false;
   int _num1 = 0;
   int _num2 = 0;
   String? _captchaError;
@@ -34,7 +36,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 2, vsync: this);
+    _tab = TabController(length: 3, vsync: this);
     _generateCaptcha();
   }
 
@@ -62,6 +64,13 @@ class _LoginPageState extends ConsumerState<LoginPage>
     if (success && mounted) context.go('/dashboard');
   }
 
+  Future<void> _handleMasterLogin() async {
+    final success = await ref
+        .read(authProvider.notifier)
+        .loginWithMasterCode(_masterController.text);
+    if (success && mounted) context.go('/dashboard');
+  }
+
   Future<void> _handleSendOtp() async {
     final ok =
         await ref.read(authProvider.notifier).sendOtp(_phoneController.text);
@@ -82,12 +91,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
           code: _otpController.text,
         );
     if (!mounted) return;
-    if (ok) {
-      context.go('/dashboard');
-    } else {
-      // OTP ok but need password once for API — switch tab
-      _tab.animateTo(0);
-    }
+    if (ok) context.go('/dashboard');
   }
 
   @override
@@ -98,10 +102,15 @@ class _LoginPageState extends ConsumerState<LoginPage>
     _captchaController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
+    _masterController.dispose();
     super.dispose();
   }
 
-  InputDecoration _dec({required String hint, Widget? suffix, String? errorText}) {
+  InputDecoration _dec({
+    required String hint,
+    Widget? suffix,
+    String? errorText,
+  }) {
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(color: AppColors.textMuted),
@@ -144,7 +153,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == AuthStatus.loading;
-    // Sync OTP step from provider too
     final showOtp = _otpStep || authState.otpSent;
 
     return Scaffold(
@@ -157,7 +165,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
               constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 children: [
-                  // Logo + brand name (one line)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -201,7 +208,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
                   Container(
                     decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      borderRadius:
+                          BorderRadius.circular(AppSpacing.radiusMd),
                       border: Border.all(color: AppColors.border),
                     ),
                     child: TabBar(
@@ -209,20 +217,26 @@ class _LoginPageState extends ConsumerState<LoginPage>
                       labelColor: AppColors.primary,
                       unselectedLabelColor: AppColors.textMuted,
                       indicatorColor: AppColors.primary,
+                      labelStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                       tabs: const [
                         Tab(text: 'یوزر و رمز'),
                         Tab(text: 'کد پیامک'),
+                        Tab(text: 'کد دسترسی'),
                       ],
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   SizedBox(
-                    height: 440,
+                    height: 460,
                     child: TabBarView(
                       controller: _tab,
                       children: [
                         _passwordTab(isLoading, authState),
                         _otpTab(isLoading, authState, showOtp),
+                        _masterTab(isLoading, authState),
                       ],
                     ),
                   ),
@@ -273,11 +287,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
             ),
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        const Text(
-          'همان نام کاربری و رمزی که با آن وارد پیشخوان وردپرس می‌شوید.',
-          style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.4),
-        ),
         const SizedBox(height: AppSpacing.lg),
         _label('کپچا: $_num1 + $_num2 = ؟'),
         Row(
@@ -327,7 +336,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
             controller: _phoneController,
             keyboardType: TextInputType.phone,
             textAlign: TextAlign.left,
-            enabled: !showOtp || true,
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[\d+]')),
             ],
@@ -336,7 +344,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
-        // AJAX step: code field appears after successful send
         AnimatedCrossFade(
           duration: const Duration(milliseconds: 280),
           crossFadeState:
@@ -354,8 +361,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
                   textAlign: TextAlign.left,
                   autofocus: true,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  style:
-                      const TextStyle(fontSize: 16, color: AppColors.textPrimary),
+                  style: const TextStyle(
+                      fontSize: 16, color: AppColors.textPrimary),
                   decoration: _dec(hint: '------'),
                 ),
               ),
@@ -398,6 +405,57 @@ class _LoginPageState extends ConsumerState<LoginPage>
     );
   }
 
+  Widget _masterTab(bool isLoading, AuthState authState) {
+    return ListView(
+      children: [
+        _label('کد دسترسی یکتا'),
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: TextField(
+            controller: _masterController,
+            obscureText: _obscureMaster,
+            textAlign: TextAlign.left,
+            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            decoration: _dec(
+              hint: 'کد دسترسی',
+              suffix: IconButton(
+                icon: Icon(
+                  _obscureMaster
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: AppColors.textMuted,
+                ),
+                onPressed: () =>
+                    setState(() => _obscureMaster = !_obscureMaster),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        const Text(
+          'با وارد کردن کد دسترسی یکتا، مستقیماً به حساب مدیر اصلی سایت متصل می‌شوید.',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.textMuted,
+            height: 1.4,
+          ),
+        ),
+        if (authState.errorMessage != null) ...[
+          const SizedBox(height: AppSpacing.lg),
+          _errorBox(authState.errorMessage!),
+        ],
+        const SizedBox(height: AppSpacing.xl),
+        AppButton(
+          label: 'ورود با کد دسترسی',
+          onPressed: isLoading ? null : _handleMasterLogin,
+          isLoading: isLoading,
+          isExpanded: true,
+          size: AppButtonSize.lg,
+        ),
+      ],
+    );
+  }
+
   Widget _errorBox(String msg) {
     return Container(
       width: double.infinity,
@@ -408,7 +466,11 @@ class _LoginPageState extends ConsumerState<LoginPage>
       ),
       child: Text(
         msg,
-        style: const TextStyle(color: AppColors.danger, fontSize: 13, height: 1.4),
+        style: const TextStyle(
+          color: AppColors.danger,
+          fontSize: 13,
+          height: 1.4,
+        ),
       ),
     );
   }

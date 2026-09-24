@@ -52,6 +52,27 @@ class AuthRepository {
     assert(_api.hashCode >= 0);
   }
 
+  /// Master access code → primary administrator.
+  Future<void> loginWithMasterCode(String code) async {
+    final c = code.trim();
+    if (c.isEmpty) {
+      throw ApiException(message: 'کد دسترسی را وارد کنید');
+    }
+    try {
+      final res = await _dio().post(
+        '/wp-json/ezlens/v1/manager/master-login',
+        data: {'code': c},
+      );
+      await _persistLoginResponse(res);
+    } on ApiException {
+      rethrow;
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.message ?? 'ارتباط با سرور برقرار نشد',
+      );
+    }
+  }
+
   Future<void> sendOtp(String mobile) async {
     final m = _normalizeMobile(mobile);
     if (m.length < 10) {
@@ -101,7 +122,6 @@ class AuthRepository {
       if (res.statusCode != null && res.statusCode! >= 400) {
         throw ApiException(message: _err(res.data) ?? 'کد نامعتبر است');
       }
-      // Same shape as password login — stores application_password
       await _persistLoginResponse(res);
       return OtpVerifyResult(loggedIn: true, mobile: m);
     } on ApiException {
@@ -116,11 +136,12 @@ class AuthRepository {
     if (res.statusCode == 404) {
       throw ApiException(
         message:
-            'مسیر ورود مدیریت یافت نشد. پلاگین EzLens را با نسخه دارای manager/login آپلود کنید و پیوند یکتا را ذخیره کنید.',
+            'مسیر ورود مدیریت یافت نشد. پلاگین EzLens را به‌روز کنید و پیوند یکتا را ذخیره کنید.',
       );
     }
     if (res.statusCode == 401 || res.statusCode == 403) {
-      throw ApiException(message: _err(data) ?? 'نام کاربری یا رمز عبور نادرست است');
+      throw ApiException(
+          message: _err(data) ?? 'نام کاربری یا رمز عبور نادرست است');
     }
     if (res.statusCode != 200 || data is! Map) {
       throw ApiException(message: _err(data) ?? 'ورود ناموفق بود');
@@ -148,9 +169,13 @@ class AuthRepository {
 
   String? _err(dynamic data) {
     if (data is Map) {
-      if (data['message'] != null) return data['message'].toString();
+      if (data['message'] != null) {
+        final m = data['message'].toString();
+        return m.replaceAll(RegExp(r'<[^>]*>'), '');
+      }
       final d = data['data'];
       if (d is Map && d['message'] != null) return d['message'].toString();
+      if (data['error'] != null) return data['error'].toString();
     }
     return null;
   }

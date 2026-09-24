@@ -139,6 +139,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+
+  Future<bool> loginWithMasterCode(String code) async {
+    state = state.copyWith(status: AuthStatus.loading, clearError: true);
+    try {
+      await _repository.loginWithMasterCode(code);
+      state = const AuthState(
+        status: AuthStatus.authenticated,
+        biometricUnlocked: true,
+      );
+      return true;
+    } on ApiException catch (e) {
+      state = AuthState(status: AuthStatus.error, errorMessage: e.message);
+      return false;
+    } catch (_) {
+      state = const AuthState(
+        status: AuthStatus.error,
+        errorMessage: 'خطای غیرمنتظره رخ داد',
+      );
+      return false;
+    }
+  }
+
   void markBiometricUnlocked() {
     state = state.copyWith(
       status: AuthStatus.authenticated,

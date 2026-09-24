@@ -1,35 +1,25 @@
-# آیکون + ورود دوقسمتی + رفع Application Password
+# ورود یوزر/رمز + OTP داخل پلاگین EzLens
 
-## ۱) آیکون برنامه
-فایل‌های `android/app/src/main/res/mipmap-*/ic_launcher.png` جایگزین شده‌اند.
+## پلاگین (اجباری)
+آپلود و فعال‌سازی:
+`EzLens-Secure-Login-manager-auth.zip`
 
-برای آیکون اختصاصی خودتان:
-1. یک PNG مربعی حداقل ۵۱۲×۵۱۲ بسازید
-2. فایل‌ها را در همین پوشه‌های mipmap با نام `ic_launcher.png` بگذارید
-   - mdpi 48 · hdpi 72 · xhdpi 96 · xxhdpi 144 · xxxhdpi 192
-3. یا در پروژه: `flutter pub add flutter_launcher_icons` و در pubspec تنظیم کنید
+سپس: تنظیمات → پیوندهای یکتا → ذخیره
 
-بعد از تعویض آیکون حتماً APK را دوباره بیلد کنید.
+Endpointهای جدید:
+- POST `/wp-json/ezlens/v1/manager/login` — یوزر + رمز عادی پیشخوان
+- POST `/wp-json/ezlens/v1/manager/otp/send`
+- POST `/wp-json/ezlens/v1/manager/otp/verify`
 
-## ۲) ورود
-- تب **رمز برنامه**: نام کاربری + Application Password (چپ‌چین LTR)
-- تب **کد پیامک**: وصل به `ezlens_otp_send` / `ezlens_otp_verify` پلاگین
+پشت‌صحنه Application Password برای REST ساخته می‌شود؛ کاربر فقط یوزر/رمز یا پیامک می‌زند.
 
-### علت خطای Application Password
-رمز عادی وردپرس قبول نیست. باید:
-پیشخوان → کاربران → شناسنامه → **Application Passwords** → ساخت رمز جدید
-همان رشته (با فاصله‌ها) را در اپ وارد کنید.
+## اپ Flutter
+محتویات این zip را روی پروژه کپی کنید و در pubspec:
 
-### باگ مهم اصلاح‌شده
-بعد از ورود، API هنوز از `ApiConfig` ثابت استفاده می‌کرد؛ الان از credentials ذخیره‌شده در SecureStorage استفاده می‌کند.
-
-## فایل‌ها
+```yaml
+flutter:
+  assets:
+    - assets/images/logo_ez.png
 ```
-lib/features/auth/data/auth_repository.dart
-lib/features/auth/presentation/auth_provider.dart
-lib/features/auth/presentation/login_page.dart
-lib/core/network/api_client.dart
-android/app/src/main/res/mipmap-*/ic_launcher.png
-web/icons/Icon-192.png
-web/icons/Icon-512.png
-```
+
+سپس push برای بیلد APK.
