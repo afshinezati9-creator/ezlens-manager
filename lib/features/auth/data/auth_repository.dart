@@ -52,12 +52,39 @@ class AuthRepository {
     assert(_api.hashCode >= 0);
   }
 
-  /// Master access code → primary administrator.
+  /// Temporary development access-code login.
+  ///
+  /// This skips the server master-login endpoint only when
+  /// EZLENS_DEMO_LOGIN=true was supplied at build time.
   Future<void> loginWithMasterCode(String code) async {
     final c = code.trim();
     if (c.isEmpty) {
-      throw ApiException(message: 'کد دسترسی را وارد کنید');
+      throw ApiException(message: 'یک مقدار برای ورود وارد کنید');
     }
+
+    if (ApiConfig.demoLoginEnabled) {
+      final username = ApiConfig.wpUsername.trim().isNotEmpty
+          ? ApiConfig.wpUsername.trim()
+          : 'demo-admin';
+      final appPassword = ApiConfig.wpAppPassword;
+
+      await _storage.saveWpCredentials(
+        username: username,
+        appPassword: appPassword,
+      );
+      await _storage.saveAccessToken(
+        'dev_session_' + DateTime.now().millisecondsSinceEpoch.toString(),
+      );
+      await _storage.saveUserData(jsonEncode({
+        'username': username,
+        'email': '',
+        'display_name': 'EzLens Manager',
+        'id': 0,
+        'login_mode': 'development',
+      }));
+      return;
+    }
+
     try {
       final res = await _dio().post(
         '/wp-json/ezlens/v1/manager/master-login',
