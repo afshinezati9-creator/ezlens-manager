@@ -26,6 +26,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
   final _otpController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _otpStep = false; // local UI: show code field after send
   int _num1 = 0;
   int _num2 = 0;
   String? _captchaError;
@@ -62,8 +63,11 @@ class _LoginPageState extends ConsumerState<LoginPage>
   }
 
   Future<void> _handleSendOtp() async {
-    final ok = await ref.read(authProvider.notifier).sendOtp(_phoneController.text);
-    if (ok && mounted) {
+    final ok =
+        await ref.read(authProvider.notifier).sendOtp(_phoneController.text);
+    if (!mounted) return;
+    if (ok) {
+      setState(() => _otpStep = true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('کد تأیید ارسال شد')),
       );
@@ -71,15 +75,17 @@ class _LoginPageState extends ConsumerState<LoginPage>
   }
 
   Future<void> _handleVerifyOtp() async {
-    final mobile = ref.read(authProvider).otpMobile ?? _phoneController.text;
+    final mobile =
+        ref.read(authProvider).otpMobile ?? _phoneController.text;
     final ok = await ref.read(authProvider.notifier).verifyOtp(
           mobile: mobile,
           code: _otpController.text,
         );
-    if (ok && mounted) {
+    if (!mounted) return;
+    if (ok) {
       context.go('/dashboard');
-    } else if (mounted) {
-      // OTP ok but need App Password — switch tab
+    } else {
+      // OTP ok but need password once for API — switch tab
       _tab.animateTo(0);
     }
   }
@@ -95,11 +101,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
     super.dispose();
   }
 
-  InputDecoration _dec({
-    required String hint,
-    Widget? suffix,
-    String? errorText,
-  }) {
+  InputDecoration _dec({required String hint, Widget? suffix, String? errorText}) {
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(color: AppColors.textMuted),
@@ -142,6 +144,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == AuthStatus.loading;
+    // Sync OTP step from provider too
+    final showOtp = _otpStep || authState.otpSent;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -153,29 +157,45 @@ class _LoginPageState extends ConsumerState<LoginPage>
               constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: const Icon(Icons.visibility_outlined,
-                        color: Colors.white, size: 36),
+                  // Logo + brand name (one line)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          'assets/images/logo_ez.png',
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Image.network(
+                            'https://ezlens.ir/wp-content/uploads/2026/07/logo-500x500-1.webp',
+                            width: 48,
+                            height: 48,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.remove_red_eye_outlined,
+                              size: 40,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'ایزی لنز',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          height: 1.1,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                  const Text(
-                    'EzLens Manager',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: 6),
                   const Text(
                     'ورود مدیر',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                   ),
                   const SizedBox(height: AppSpacing.xxl),
                   Container(
@@ -190,19 +210,19 @@ class _LoginPageState extends ConsumerState<LoginPage>
                       unselectedLabelColor: AppColors.textMuted,
                       indicatorColor: AppColors.primary,
                       tabs: const [
-                        Tab(text: 'رمز برنامه'),
+                        Tab(text: 'یوزر و رمز'),
                         Tab(text: 'کد پیامک'),
                       ],
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   SizedBox(
-                    height: 420,
+                    height: 440,
                     child: TabBarView(
                       controller: _tab,
                       children: [
                         _passwordTab(isLoading, authState),
-                        _otpTab(isLoading, authState),
+                        _otpTab(isLoading, authState, showOtp),
                       ],
                     ),
                   ),
@@ -218,7 +238,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
   Widget _passwordTab(bool isLoading, AuthState authState) {
     return ListView(
       children: [
-        _label('نام کاربری (ایمیل یا نام کاربری وردپرس)'),
+        _label('نام کاربری یا ایمیل'),
         Directionality(
           textDirection: TextDirection.ltr,
           child: TextField(
@@ -226,11 +246,11 @@ class _LoginPageState extends ConsumerState<LoginPage>
             keyboardType: TextInputType.emailAddress,
             textAlign: TextAlign.left,
             style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-            decoration: _dec(hint: 'info@example.com'),
+            decoration: _dec(hint: 'info@ezlens.ir'),
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
-        _label('Application Password'),
+        _label('رمز عبور'),
         Directionality(
           textDirection: TextDirection.ltr,
           child: TextField(
@@ -239,7 +259,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
             textAlign: TextAlign.left,
             style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
             decoration: _dec(
-              hint: 'xxxx xxxx xxxx xxxx',
+              hint: 'رمز ورود سایت',
               suffix: IconButton(
                 icon: Icon(
                   _obscurePassword
@@ -255,7 +275,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
         ),
         const SizedBox(height: AppSpacing.sm),
         const Text(
-          'رمز حساب وردپرس کار نمی‌کند. از پیشخوان ← کاربران ← Application Passwords یک رمز بسازید.',
+          'همان نام کاربری و رمزی که با آن وارد پیشخوان وردپرس می‌شوید.',
           style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.4),
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -297,8 +317,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
     );
   }
 
-  Widget _otpTab(bool isLoading, AuthState authState) {
-    final otpSent = authState.otpSent;
+  Widget _otpTab(bool isLoading, AuthState authState, bool showOtp) {
     return ListView(
       children: [
         _label('شماره موبایل'),
@@ -308,6 +327,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
             controller: _phoneController,
             keyboardType: TextInputType.phone,
             textAlign: TextAlign.left,
+            enabled: !showOtp || true,
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[\d+]')),
             ],
@@ -316,46 +336,64 @@ class _LoginPageState extends ConsumerState<LoginPage>
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
-        if (otpSent) ...[
-          _label('کد تأیید'),
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: TextField(
-              controller: _otpController,
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.left,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-              decoration: _dec(hint: '------'),
-            ),
+        // AJAX step: code field appears after successful send
+        AnimatedCrossFade(
+          duration: const Duration(milliseconds: 280),
+          crossFadeState:
+              showOtp ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          firstChild: const SizedBox(width: double.infinity, height: 0),
+          secondChild: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _label('کد تأیید پیامک'),
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: TextField(
+                  controller: _otpController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.left,
+                  autofocus: true,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  style:
+                      const TextStyle(fontSize: 16, color: AppColors.textPrimary),
+                  decoration: _dec(hint: '------'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
           ),
-          const SizedBox(height: AppSpacing.lg),
-        ],
+        ),
         if (authState.errorMessage != null) ...[
           _errorBox(authState.errorMessage!),
           const SizedBox(height: AppSpacing.lg),
         ],
         AppButton(
-          label: otpSent ? 'تأیید کد' : 'ارسال کد',
+          label: showOtp ? 'تأیید و ورود' : 'ارسال کد تأیید',
           onPressed: isLoading
               ? null
-              : (otpSent ? _handleVerifyOtp : _handleSendOtp),
+              : (showOtp ? _handleVerifyOtp : _handleSendOtp),
           isLoading: isLoading,
           isExpanded: true,
           size: AppButtonSize.lg,
         ),
-        if (otpSent) ...[
+        if (showOtp) ...[
           const SizedBox(height: AppSpacing.md),
+          TextButton(
+            onPressed: isLoading
+                ? null
+                : () {
+                    setState(() {
+                      _otpStep = false;
+                      _otpController.clear();
+                    });
+                  },
+            child: const Text('تغییر شماره'),
+          ),
           TextButton(
             onPressed: isLoading ? null : _handleSendOtp,
             child: const Text('ارسال مجدد کد'),
           ),
         ],
-        const SizedBox(height: AppSpacing.md),
-        const Text(
-          'ورود پیامکی هویت را تأیید می‌کند. برای دسترسی API مدیریت پس از تأیید، یک‌بار با Application Password وارد شوید.',
-          style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.4),
-        ),
       ],
     );
   }

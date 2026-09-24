@@ -16,12 +16,12 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
-        android:label="EzLens Manager"
+        android:label="ایزی لنز"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="false"
         android:requestLegacyExternalStorage="false"
-        tools:replace="android:requestLegacyExternalStorage">
+        tools:replace="android:label,android:requestLegacyExternalStorage">
         <activity
             android:name=".MainActivity"
             android:exported="true"

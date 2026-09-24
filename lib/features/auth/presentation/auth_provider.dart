@@ -118,23 +118,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(status: AuthStatus.loading, clearError: true);
     try {
-      final result = await _repository.verifyOtp(mobile: mobile, code: code);
-      if (result.loggedIn) {
-        state = const AuthState(
-          status: AuthStatus.authenticated,
-          biometricUnlocked: true,
-        );
-        return true;
-      }
-      state = state.copyWith(
-        status: AuthStatus.unauthenticated,
-        errorMessage:
-            'کد تأیید درست بود. برای ورود به پنل مدیریت، از تب «رمز برنامه» '
-            'با Application Password وارد شوید (API مدیریت به آن نیاز دارد).',
-        otpSent: true,
-        otpMobile: result.mobile,
+      await _repository.verifyOtp(mobile: mobile, code: code);
+      state = const AuthState(
+        status: AuthStatus.authenticated,
+        biometricUnlocked: true,
       );
-      return false;
+      return true;
     } on ApiException catch (e) {
       state = state.copyWith(
         status: AuthStatus.error,
