@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_picker/file_picker.dart';
-
 import '../../../core/debug/debug_log_service.dart';
 import '../../../core/theme/app_colors.dart';
 import 'auth_provider.dart';
