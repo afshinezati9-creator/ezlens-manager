@@ -81,11 +81,28 @@ jobs:
         run: flutter pub get
 
       - name: Build APK
+        env:
+          EZLENS_WP_BASE_URL: ${{ secrets.EZLENS_WP_BASE_URL }}
+          EZLENS_WP_USERNAME: ${{ secrets.EZLENS_WP_USERNAME }}
+          EZLENS_WP_APP_PASSWORD: ${{ secrets.EZLENS_WP_APP_PASSWORD }}
+          EZLENS_WC_CONSUMER_KEY: ${{ secrets.EZLENS_WC_CONSUMER_KEY }}
+          EZLENS_WC_CONSUMER_SECRET: ${{ secrets.EZLENS_WC_CONSUMER_SECRET }}
         run: |
           set -o pipefail
           sed -i '/evaluationDependsOn/d' android/build.gradle.kts || true
           sed -i 's/compileSdk = [0-9]\+/compileSdk = 36/' android/app/build.gradle.kts || true
-          flutter build apk --release 2>&1 | tee build-log.txt
+
+          # TEMPORARY DEVELOPMENT BUILD:
+          # Any non-empty access-code value opens the app locally.
+          # Credentials, when configured, come from GitHub Actions Secrets.
+          flutter build apk --release \
+            --dart-define=EZLENS_DEMO_LOGIN=true \
+            --dart-define=EZLENS_WP_BASE_URL="${EZLENS_WP_BASE_URL:-https://ezlens.ir}" \
+            --dart-define=EZLENS_WP_USERNAME="${EZLENS_WP_USERNAME}" \
+            --dart-define=EZLENS_WP_APP_PASSWORD="${EZLENS_WP_APP_PASSWORD}" \
+            --dart-define=EZLENS_WC_CONSUMER_KEY="${EZLENS_WC_CONSUMER_KEY}" \
+            --dart-define=EZLENS_WC_CONSUMER_SECRET="${EZLENS_WC_CONSUMER_SECRET}" \
+            2>&1 | tee build-log.txt
 
       - name: Upload build log
         if: always()
