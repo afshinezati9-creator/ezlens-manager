@@ -6,6 +6,7 @@ plugins {
 
 android {
     namespace = "ir.ezlens.ezlens_manager"
+    // Required by flutter_plugin_android_lifecycle / file_picker (min 36)
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 

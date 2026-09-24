@@ -53,6 +53,22 @@ jobs:
           systemProp.org.gradle.internal.repository.initial.backoff=3000
           EOF
 
+      - name: Ensure compileSdk 36 in app (Flutter may rewrite)
+        run: |
+          # After flutter upgrades files, re-assert compileSdk
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i 's/compileSdk = [0-9]\+/compileSdk = 36/' android/app/build.gradle.kts || true
+            sed -i 's/compileSdkVersion [0-9]\+/compileSdk = 36/' android/app/build.gradle.kts || true
+            grep -n "compileSdk" android/app/build.gradle.kts || true
+          fi
+          # Ensure newDsl stays off
+          if ! grep -q "android.newDsl=false" android/gradle.properties 2>/dev/null; then
+            echo "android.newDsl=false" >> android/gradle.properties
+          fi
+          if ! grep -q "android.builtInKotlin=false" android/gradle.properties 2>/dev/null; then
+            echo "android.builtInKotlin=false" >> android/gradle.properties
+          fi
+
       - name: Pub get
         run: flutter pub get
 
@@ -78,7 +94,8 @@ jobs:
       - name: Build APK
         run: |
           set -o pipefail
-          # Match Flutter-required toolchain (Gradle 9.1 / AGP 9 / Kotlin 2.2.20+)
+          # Re-pin compileSdk right before build (Flutter "Upgrading build.gradle.kts" may change it)
+          sed -i 's/compileSdk = [0-9]\+/compileSdk = 36/' android/app/build.gradle.kts || true
           flutter build apk --release 2>&1 | tee build-log.txt
 
       - name: Upload build log
