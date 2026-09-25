@@ -6,10 +6,12 @@ import '../data/wallet_models.dart';
 
 class WalletPaymentInfoCard extends StatelessWidget {
   final WalletPaymentConfig config;
+  final VoidCallback? onEdit;
 
   const WalletPaymentInfoCard({
     super.key,
     required this.config,
+    this.onEdit,
   });
 
   Future<void> _copy(BuildContext context, String value, String label) async {
@@ -154,7 +156,7 @@ class WalletPaymentInfoCard extends StatelessWidget {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'اطلاعات پرداخت از تنظیمات پلاگین دریافت می‌شود',
+                      'اطلاعات پرداخت کیف پول مستقیماً با پلاگین همگام است',
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textMuted,
@@ -163,6 +165,12 @@ class WalletPaymentInfoCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onEdit != null)
+                IconButton(
+                  tooltip: 'ویرایش اطلاعات حساب',
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined),
+                ),
             ],
           ),
           const SizedBox(height: 10),
