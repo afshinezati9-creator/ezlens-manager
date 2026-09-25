@@ -161,3 +161,61 @@ class WalletLedgerEntry {
     );
   }
 }
+
+class WalletPaymentConfig {
+  final bool onlineEnabled;
+  final bool cardEnabled;
+  final bool bankEnabled;
+  final String bankName;
+  final String accountOwner;
+  final String accountName;
+  final String cardNumber;
+  final String accountNumber;
+  final String iban;
+  final String note;
+
+  const WalletPaymentConfig({
+    this.onlineEnabled = true,
+    this.cardEnabled = true,
+    this.bankEnabled = true,
+    this.bankName = '',
+    this.accountOwner = '',
+    this.accountName = '',
+    this.cardNumber = '',
+    this.accountNumber = '',
+    this.iban = '',
+    this.note = '',
+  });
+
+  factory WalletPaymentConfig.fromJson(Map<String, dynamic> json) {
+    final methods = json['methods'] is Map
+        ? Map<String, dynamic>.from(json['methods'] as Map)
+        : <String, dynamic>{};
+    final account = json['account'] is Map
+        ? Map<String, dynamic>.from(json['account'] as Map)
+        : <String, dynamic>{};
+
+    bool flag(dynamic value) => value == true || value.toString() == '1';
+
+    return WalletPaymentConfig(
+      onlineEnabled: flag(methods['online']),
+      cardEnabled: flag(methods['card']),
+      bankEnabled: flag(methods['bank']),
+      bankName: '${account['wallet_bank_name'] ?? ''}',
+      accountOwner: '${account['wallet_account_owner'] ?? ''}',
+      accountName: '${account['wallet_account_name'] ?? ''}',
+      cardNumber: '${account['wallet_card_number'] ?? ''}',
+      accountNumber: '${account['wallet_account_number'] ?? ''}',
+      iban: '${account['wallet_iban'] ?? ''}',
+      note: '${account['wallet_account_note'] ?? ''}',
+    );
+  }
+
+  bool get hasAccountData =>
+      bankName.isNotEmpty ||
+      accountOwner.isNotEmpty ||
+      accountName.isNotEmpty ||
+      cardNumber.isNotEmpty ||
+      accountNumber.isNotEmpty ||
+      iban.isNotEmpty;
+}
