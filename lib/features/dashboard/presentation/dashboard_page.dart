@@ -20,22 +20,12 @@ final dashboardRecentLoginsProvider =
   final repo = ref.watch(userRepositoryProvider);
   final result = await repo.fetchUsers(
     page: 1,
-    perPage: 20,
-    orderby: 'registered_date',
+    perPage: 8,
+    orderby: 'last_login',
     summary: true,
     order: 'desc',
   );
-  final list = List<ManagerUser>.from(result.items);
-  list.sort((a, b) {
-    final aa = a.lastLogin ??
-        a.dateCreated ??
-        DateTime.fromMillisecondsSinceEpoch(0);
-    final bb = b.lastLogin ??
-        b.dateCreated ??
-        DateTime.fromMillisecondsSinceEpoch(0);
-    return bb.compareTo(aa);
-  });
-  return list.take(8).toList();
+  return List<ManagerUser>.from(result.items);
 });
 
 /// Latest products with views.
