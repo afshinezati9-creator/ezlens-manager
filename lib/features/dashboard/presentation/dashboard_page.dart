@@ -14,7 +14,7 @@ final dashboardStatsProvider =
   return ref.watch(statsRepositoryProvider).fetch(period: 'week');
 });
 
-/// Recent users sorted by last login (client-side).
+/// Recent users sorted by last login on the Manager API.
 final dashboardRecentLoginsProvider =
     FutureProvider.autoDispose<List<ManagerUser>>((ref) async {
   final repo = ref.watch(userRepositoryProvider);
