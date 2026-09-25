@@ -82,9 +82,10 @@ class AuthRepository {
         username: username,
         appPassword: appPassword,
       );
-      await _storage.saveAccessToken(
-        'dev_session_' + DateTime.now().millisecondsSinceEpoch.toString(),
-      );
+      final token =
+          'dev_session_' + DateTime.now().millisecondsSinceEpoch.toString();
+      await _storage.saveAccessToken(token);
+      _api.setAccessToken(token);
       await _storage.saveUserData(jsonEncode({
         'username': username,
         'email': '',
@@ -195,6 +196,9 @@ class AuthRepository {
     // Manager authentication is token-based and per-device.
     // Never persist a server-generated application password here.
     await _storage.saveAccessToken(token);
+    // Keep the same token in the ApiClient memory cache for subsequent
+    // requests, avoiding repeated encrypted-storage reads.
+    _api.setAccessToken(token);
     await _storage.saveUserData(jsonEncode({
       'username': loginName,
       'email': map['user_email'],
@@ -237,6 +241,7 @@ class AuthRepository {
       }
     }
     await _storage.clearSession();
+    _api.clearAccessToken();
   }
 
   Future<bool> isLoggedIn() => _storage.hasValidSession();
