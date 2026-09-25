@@ -229,7 +229,7 @@ class ApiClient {
     // from invalidating another device's session.
     final token = await _storage.getAccessToken();
     if (token != null && token.isNotEmpty && !token.startsWith('dev_session_')) {
-      return 'Bearer $' + '{token}';
+      return 'Bearer ' + token;
     }
 
     // Legacy/demo fallback only.
@@ -241,8 +241,8 @@ class ApiClient {
     final p = (storedPass != null && storedPass.isNotEmpty)
         ? storedPass
         : ApiConfig.wpAppPassword;
-    final raw = '$' + '{u}:$' + '{p}';
-    return 'Basic $' + '{base64Encode(utf8.encode(raw))}';
+    final raw = u + ':' + p;
+    return 'Basic ' + base64Encode(utf8.encode(raw));
   }
 
 
