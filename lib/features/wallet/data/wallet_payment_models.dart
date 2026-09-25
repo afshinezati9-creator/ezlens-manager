@@ -61,13 +61,13 @@ class WalletBankAccount {
 
   factory WalletBankAccount.fromJson(Map<String, dynamic> json) {
     return WalletBankAccount(
-      bankName: '\${json['bank_name'] ?? ''}',
-      owner: '\${json['owner'] ?? ''}',
-      accountName: '\${json['account_name'] ?? ''}',
-      cardNumber: '\${json['card_number'] ?? ''}',
-      accountNumber: '\${json['account_number'] ?? ''}',
-      iban: '\${json['iban'] ?? ''}',
-      note: '\${json['note'] ?? ''}',
+      bankName: '${json['bank_name'] ?? ''}',
+      owner: '${json['owner'] ?? ''}',
+      accountName: '${json['account_name'] ?? ''}',
+      cardNumber: '${json['card_number'] ?? ''}',
+      accountNumber: '${json['account_number'] ?? ''}',
+      iban: '${json['iban'] ?? ''}',
+      note: '${json['note'] ?? ''}',
     );
   }
 
