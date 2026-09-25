@@ -65,6 +65,7 @@ import '../../features/campaign/presentation/book_detail_page.dart';
 import '../../features/campaign/presentation/campaign_create_page.dart';
 import '../../features/wallet/presentation/wallet_list_page.dart';
 import '../../features/wallet/presentation/wallet_adjust_page.dart';
+import '../../features/wallet/presentation/wallet_payment_accounts_page.dart';
 import '../../features/charity/presentation/charity_hub_page.dart';
 import '../../features/charity/presentation/charity_case_form_page.dart';
 import '../../features/discounts/presentation/discounts_hub_page.dart';
@@ -602,6 +603,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               return const NoTransitionPage(child: WalletListPage());
             },
           ),
+          GoRoute(
+            path: '/wallet/accounts',
+            pageBuilder: (context, state) {
+              return const NoTransitionPage(child: WalletPaymentAccountsPage());
+            },
+          ),
+
           GoRoute(
             path: '/wallet/adjust',
             pageBuilder: (context, state) {
