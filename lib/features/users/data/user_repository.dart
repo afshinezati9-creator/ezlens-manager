@@ -12,6 +12,20 @@ class UserRepository {
   final ApiClient _api;
   UserRepository(this._api);
 
+  // Coalesce identical list requests triggered by rebuilds/navigation.
+  final Map<String, Future<UsersListResult>> _inFlightLists = {};
+
+  String _listKey({
+    required int page,
+    required int perPage,
+    required String search,
+    required String role,
+    required String orderby,
+    required String order,
+  }) =>
+      '${page}|${perPage}|${search.trim()}|${role}|${orderby}|${order}';
+
+
   static const _wc = '/wp-json/wc/v3/customers';
   static const _mgr = '/wp-json/ezlens/v1/manager/customers';
   static const _wpUsers = '/wp-json/wp/v2/users';
@@ -24,6 +38,42 @@ class UserRepository {
     String role = '',
     String orderby = 'registered_date',
     String order = 'desc',
+  }) {
+    final key = _listKey(
+      page: page,
+      perPage: perPage,
+      search: search,
+      role: role,
+      orderby: orderby,
+      order: order,
+    );
+    final existing = _inFlightLists[key];
+    if (existing != null) return existing;
+
+    final request = _fetchUsersInternal(
+      page: page,
+      perPage: perPage,
+      search: search,
+      role: role,
+      orderby: orderby,
+      order: order,
+    );
+    _inFlightLists[key] = request;
+    request.whenComplete(() {
+      if (identical(_inFlightLists[key], request)) {
+        _inFlightLists.remove(key);
+      }
+    });
+    return request;
+  }
+
+  Future<UsersListResult> _fetchUsersInternal({
+    required int page,
+    required int perPage,
+    required String search,
+    required String role,
+    required String orderby,
+    required String order,
   }) async {
     String ob = 'registered';
     if (orderby == 'name' || orderby == 'display_name') ob = 'display_name';
@@ -141,6 +191,8 @@ class UserRepository {
     return UsersListResult(items: items, total: total, totalPages: totalPages);
   }
 
+  }
+
   ManagerUser _fromManagerJson(Map<String, dynamic> json) {
     if (json['billing'] is Map || json.containsKey('meta_data')) {
       final base = ManagerUser.fromWcJson(json);
@@ -189,13 +241,8 @@ class UserRepository {
       throw Exception('مشتری یافت نشد');
     }
     var user = ManagerUser.fromWcJson(Map<String, dynamic>.from(data as Map));
-    try {
-      final enr = await _api.wpGet<Map<String, dynamic>>('$_mgr/$id');
-      if (enr.data is Map) {
-        user = user.mergeEnrichment(Map<String, dynamic>.from(enr.data as Map));
-      }
-    } catch (_) {}
     return user;
+
   }
 
   Future<ManagerUser> createUser({
