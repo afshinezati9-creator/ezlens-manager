@@ -353,7 +353,7 @@ class ApiClient {
       data: data,
       options: Options(
         headers: {
-          ...await _authHeaders(wooCommerce: false),
+          ...await _authHeaders(wooCommerce: true),
         },
       ),
     );
@@ -372,7 +372,7 @@ class ApiClient {
       data: data,
       options: Options(
         headers: {
-          ...await _authHeaders(),
+          ...await _authHeaders(wooCommerce: true),
         },
       ),
     );
@@ -391,7 +391,7 @@ class ApiClient {
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          ...await _authHeaders(),
+          ...await _authHeaders(wooCommerce: true),
         },
       ),
     );
@@ -410,7 +410,7 @@ class ApiClient {
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          ...await _authHeaders(),
+          ...await _authHeaders(wooCommerce: false),
         },
       ),
     );
@@ -431,7 +431,7 @@ class ApiClient {
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          ...await _authHeaders(),
+          ...await _authHeaders(wooCommerce: false),
         },
       ),
     );
@@ -452,7 +452,7 @@ class ApiClient {
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          ...await _authHeaders(),
+          ...await _authHeaders(wooCommerce: false),
         },
       ),
     );
@@ -471,7 +471,7 @@ class ApiClient {
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          ...await _authHeaders(),
+          ...await _authHeaders(wooCommerce: false),
         },
       ),
     );
