@@ -225,7 +225,20 @@ class AuthRepository {
     return m;
   }
 
-  Future<void> logout() async => _storage.clearSession();
+  Future<void> logout() async {
+    final token = await _storage.getAccessToken();
+    if (token != null && token.isNotEmpty && !token.startsWith('dev_session_')) {
+      try {
+        await _dio().post(
+          '/wp-json/ezlens-app/v1/auth/logout',
+          options: Options(headers: {'Authorization': 'Bearer $token'}),
+        );
+      } catch (_) {
+        // Local logout must still work if the server is temporarily unreachable.
+      }
+    }
+    await _storage.clearSession();
+  }
 
   Future<bool> isLoggedIn() => _storage.hasValidSession();
 }
