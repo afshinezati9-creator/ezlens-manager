@@ -27,6 +27,16 @@ class WalletPaymentSettings {
     );
   }
 
+
+  Map<String, dynamic> toJson() => {
+        'methods': {
+          'online': onlineEnabled,
+          'card': cardEnabled,
+          'bank': bankEnabled,
+        },
+        'bank_account': account.toJson(),
+      };
+
   bool get hasAnyMethod => onlineEnabled || cardEnabled || bankEnabled;
 }
 
@@ -60,6 +70,17 @@ class WalletBankAccount {
       note: '\${json['note'] ?? ''}',
     );
   }
+
+
+  Map<String, dynamic> toJson() => {
+        'bank_name': bankName,
+        'owner': owner,
+        'account_name': accountName,
+        'card_number': cardNumber,
+        'account_number': accountNumber,
+        'iban': iban,
+        'note': note,
+      };
 
   bool get isEmpty =>
       bankName.isEmpty &&
