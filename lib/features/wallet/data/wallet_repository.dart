@@ -118,6 +118,29 @@ class WalletRepository {
     throw Exception('تنظیمات کیف پول دریافت نشد');
   }
 
+  Future<WalletPaymentConfig> savePaymentConfig(WalletPaymentConfig config) async {
+    final response = await _api.wpPost<Map<String, dynamic>>(
+      '$_base/config',
+      data: {
+        'wallet_payment_online_enabled': config.onlineEnabled ? '1' : '0',
+        'wallet_payment_card_enabled': config.cardEnabled ? '1' : '0',
+        'wallet_payment_bank_enabled': config.bankEnabled ? '1' : '0',
+        'wallet_bank_name': config.bankName,
+        'wallet_account_owner': config.accountOwner,
+        'wallet_account_name': config.accountName,
+        'wallet_card_number': config.cardNumber,
+        'wallet_account_number': config.accountNumber,
+        'wallet_iban': config.iban,
+        'wallet_account_note': config.note,
+      },
+    );
+    final data = response.data;
+    if (data is Map<String, dynamic>) {
+      return WalletPaymentConfig.fromJson(data);
+    }
+    throw Exception('ذخیره اطلاعات حساب انجام نشد');
+  }
+
   Future<List<WalletUser>> searchUsers(String q) async {
     final response = await _api.wpGet<Map<String, dynamic>>(
       '$_base/search-users',
