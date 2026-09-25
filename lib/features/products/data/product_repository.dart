@@ -9,6 +9,30 @@ class ProductRepository {
 
   ProductRepository(this._api);
 
+  // Static product filters are reused across the product screen.
+  // Keep a short in-memory cache so opening/filtering the screen does not
+  // repeatedly hit WooCommerce for the same categories/tags/brands.
+  List<ProductCategory>? _categoriesCache;
+  DateTime? _categoriesCachedAt;
+  List<ProductTag>? _tagsCache;
+  DateTime? _tagsCachedAt;
+  List<ProductTag>? _brandsCache;
+  DateTime? _brandsCachedAt;
+
+  static const _filterCacheTtl = Duration(minutes: 5);
+
+  bool _fresh(DateTime? at) =>
+      at != null && DateTime.now().difference(at) < _filterCacheTtl;
+
+  void clearFilterCaches() {
+    _categoriesCache = null;
+    _categoriesCachedAt = null;
+    _tagsCache = null;
+    _tagsCachedAt = null;
+    _brandsCache = null;
+    _brandsCachedAt = null;
+  }
+
   // ===== دریافت لیست محصولات =====
   Future<List<Product>> fetchProducts({
     int page = 1,
@@ -104,9 +128,13 @@ class ProductRepository {
 
   // ===== دسته‌بندی‌ها =====
   Future<List<ProductCategory>> fetchCategories() async {
-    List<ProductCategory> allCategories = [];
-    int page = 1;
-    bool hasMore = true;
+    if (_fresh(_categoriesCachedAt) && _categoriesCache != null) {
+      return List<ProductCategory>.from(_categoriesCache!);
+    }
+
+    final allCategories = <ProductCategory>[];
+    var page = 1;
+    var hasMore = true;
 
     while (hasMore) {
       try {
@@ -119,9 +147,7 @@ class ProductRepository {
           hasMore = false;
         } else {
           allCategories.addAll(
-            data.map(
-              (e) => ProductCategory.fromJson(e as Map<String, dynamic>),
-            ),
+            data.map((e) => ProductCategory.fromJson(e as Map<String, dynamic>)),
           );
           if (data.length < 100) {
             hasMore = false;
@@ -134,14 +160,21 @@ class ProductRepository {
         break;
       }
     }
+
+    _categoriesCache = List<ProductCategory>.from(allCategories);
+    _categoriesCachedAt = DateTime.now();
     return allCategories;
   }
 
   // ===== تگ‌ها =====
   Future<List<ProductTag>> fetchTags() async {
-    List<ProductTag> allTags = [];
-    int page = 1;
-    bool hasMore = true;
+    if (_fresh(_tagsCachedAt) && _tagsCache != null) {
+      return List<ProductTag>.from(_tagsCache!);
+    }
+
+    final allTags = <ProductTag>[];
+    var page = 1;
+    var hasMore = true;
 
     while (hasMore) {
       try {
@@ -154,9 +187,7 @@ class ProductRepository {
           hasMore = false;
         } else {
           allTags.addAll(
-            data.map(
-              (e) => ProductTag.fromJson(e as Map<String, dynamic>),
-            ),
+            data.map((e) => ProductTag.fromJson(e as Map<String, dynamic>)),
           );
           if (data.length < 100) {
             hasMore = false;
@@ -169,17 +200,25 @@ class ProductRepository {
         break;
       }
     }
+
+    _tagsCache = List<ProductTag>.from(allTags);
+    _tagsCachedAt = DateTime.now();
     return allTags;
   }
 
   // ===== برندها =====
   Future<List<ProductTag>> fetchBrands() async {
+    if (_fresh(_brandsCachedAt) && _brandsCache != null) {
+      return List<ProductTag>.from(_brandsCache!);
+    }
+
+    List<ProductTag> result;
     try {
       final response = await _api.wcGet<List<dynamic>>(
         '/wp-json/wc/v3/products/brands',
         queryParameters: {'per_page': 100},
       );
-      return (response.data ?? [])
+      result = (response.data ?? [])
           .map((e) => ProductTag.fromJson(e as Map<String, dynamic>))
           .toList();
     } catch (_) {
@@ -187,10 +226,14 @@ class ProductRepository {
         '/wp-json/wp/v2/product_brand',
         queryParameters: {'per_page': 100},
       );
-      return (response.data ?? [])
+      result = (response.data ?? [])
           .map((e) => ProductTag.fromJson(e as Map<String, dynamic>))
           .toList();
     }
+
+    _brandsCache = List<ProductTag>.from(result);
+    _brandsCachedAt = DateTime.now();
+    return result;
   }
 
   // ===== ایجاد دسته‌بندی =====
@@ -199,7 +242,9 @@ class ProductRepository {
       '/wp-json/wc/v3/products/categories',
       data: data,
     );
-    return ProductCategory.fromJson(response.data as Map<String, dynamic>);
+    final result = ProductCategory.fromJson(response.data as Map<String, dynamic>);
+    clearFilterCaches();
+    return result;
   }
 
   // ===== ایجاد برند =====
@@ -215,7 +260,9 @@ class ProductRepository {
         '/wp-json/wp/v2/product_brand',
         data: data,
       );
-      return ProductTag.fromJson(response.data as Map<String, dynamic>);
+      final result = ProductTag.fromJson(response.data as Map<String, dynamic>);
+      clearFilterCaches();
+      return result;
     }
   }
 
@@ -225,6 +272,8 @@ class ProductRepository {
       '/wp-json/wc/v3/products/tags',
       data: data,
     );
-    return ProductTag.fromJson(response.data as Map<String, dynamic>);
+    final result = ProductTag.fromJson(response.data as Map<String, dynamic>);
+    clearFilterCaches();
+    return result;
   }
 }
