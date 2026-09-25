@@ -60,3 +60,8 @@ final walletStatsProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) {
   return ref.watch(walletRepositoryProvider).fetchStats();
 });
+
+final walletPaymentConfigProvider =
+    FutureProvider.autoDispose<WalletPaymentConfig>((ref) {
+  return ref.watch(walletRepositoryProvider).fetchPaymentConfig();
+});
