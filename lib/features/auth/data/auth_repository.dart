@@ -188,14 +188,13 @@ class AuthRepository {
       throw ApiException(message: _err(map) ?? 'ورود ناموفق بود');
     }
     final loginName = (map['username'] ?? '').toString();
-    final appPass = (map['application_password'] ?? '').toString();
-    if (loginName.isEmpty || appPass.isEmpty) {
+    final token = (map['token'] ?? '').toString().trim();
+    if (loginName.isEmpty || token.isEmpty) {
       throw ApiException(message: 'پاسخ سرور ناقص بود');
     }
-    await _storage.saveWpCredentials(username: loginName, appPassword: appPass);
-    await _storage.saveAccessToken(
-      'session_${DateTime.now().millisecondsSinceEpoch}',
-    );
+    // Manager authentication is token-based and per-device.
+    // Never persist a server-generated application password here.
+    await _storage.saveAccessToken(token);
     await _storage.saveUserData(jsonEncode({
       'username': loginName,
       'email': map['user_email'],
