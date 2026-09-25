@@ -22,6 +22,7 @@ final dashboardRecentLoginsProvider =
     page: 1,
     perPage: 20,
     orderby: 'registered_date',
+    summary: true,
     order: 'desc',
   );
   final list = List<ManagerUser>.from(result.items);
