@@ -13,6 +13,12 @@ class ApiClient {
   final SecureStorageService _storage;
   final DebugLogService _log = DebugLogService.instance;
 
+  // Keep the per-device bearer token in memory after the first secure-storage
+  // read. Dashboard screens can issue several requests at once, so reading
+  // encrypted storage for every request adds avoidable local I/O.
+  String? _cachedAccessToken;
+  bool _accessTokenLoaded = false;
+
   ApiClient(this._storage) {
     _dio = Dio(
       BaseOptions(
@@ -47,6 +53,26 @@ class ApiClient {
     }
   }
 
+  /// Update the in-memory authentication token after login without forcing
+  /// the next API request to hit secure storage again.
+  void setAccessToken(String token) {
+    _cachedAccessToken = token.trim().isEmpty ? null : token.trim();
+    _accessTokenLoaded = true;
+  }
+
+  /// Clear the in-memory authentication token after logout.
+  void clearAccessToken() {
+    _cachedAccessToken = null;
+    _accessTokenLoaded = true;
+  }
+
+  Future<String?> _getAccessToken() async {
+    if (_accessTokenLoaded) return _cachedAccessToken;
+    _cachedAccessToken = await _storage.getAccessToken();
+    _accessTokenLoaded = true;
+    return _cachedAccessToken;
+  }
+
   // ============================================================
   // Request Interceptor
   // ============================================================
@@ -62,7 +88,7 @@ class ApiClient {
         options.headers.containsKey('Authorization');
 
     if (!hasExistingAuth) {
-      final token = await _storage.getAccessToken();
+      final token = await _getAccessToken();
       if (token != null && token.isNotEmpty && !token.startsWith('dev_session_')) {
         options.headers['Authorization'] = 'Bearer $token';
       } else {
@@ -227,7 +253,7 @@ class ApiClient {
   Future<String> _wpAuth() async {
     // Prefer the per-device Manager bearer token. This prevents one device
     // from invalidating another device's session.
-    final token = await _storage.getAccessToken();
+    final token = await _getAccessToken();
     if (token != null && token.isNotEmpty && !token.startsWith('dev_session_')) {
       return 'Bearer ' + token;
     }
