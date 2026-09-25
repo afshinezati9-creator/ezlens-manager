@@ -5,11 +5,13 @@ import 'package:flutter/foundation.dart';
 
 import '../config/api_config.dart';
 import '../storage/secure_storage_service.dart';
+import '../debug/debug_log_service.dart';
 import 'api_exception.dart';
 
 class ApiClient {
   late final Dio _dio;
   final SecureStorageService _storage;
+  final DebugLogService _log = DebugLogService.instance;
 
   ApiClient(this._storage) {
     _dio = Dio(
@@ -53,6 +55,7 @@ class ApiClient {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
+    options.extra['ezlens_started_at'] = DateTime.now().microsecondsSinceEpoch;
     final isWooCommerce = options.path.contains('/wp-json/wc/');
 
     final hasExistingAuth =
@@ -84,7 +87,12 @@ class ApiClient {
   void _onResponse(
     Response response,
     ResponseInterceptorHandler handler,
-  ) {
+  ) async {
+    final started = response.requestOptions.extra['ezlens_started_at'];
+    if (started is int) {
+      final ms = (DateTime.now().microsecondsSinceEpoch - started) / 1000;
+      await _log.log('API ${response.requestOptions.method} ${response.requestOptions.path} → ${response.statusCode} in ${ms.toStringAsFixed(0)}ms');
+    }
     handler.next(response);
   }
 
@@ -96,6 +104,11 @@ class ApiClient {
     DioException error,
     ErrorInterceptorHandler handler,
   ) async {
+    final started = error.requestOptions.extra['ezlens_started_at'];
+    if (started is int) {
+      final ms = (DateTime.now().microsecondsSinceEpoch - started) / 1000;
+      await _log.log('API ERROR ${error.requestOptions.method} ${error.requestOptions.path} → ${error.response?.statusCode ?? error.type.name} in ${ms.toStringAsFixed(0)}ms', level: 'ERROR');
+    }
     final exception = _mapDioError(error);
 
     handler.reject(
