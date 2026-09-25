@@ -10,11 +10,27 @@ final statsRepositoryProvider = Provider<StatsRepository>((ref) {
 
 class StatsRepository {
   final ApiClient _api;
+
+  // Share identical in-flight requests so concurrent dashboard widgets do not
+  // hit the same endpoint more than once. Completed responses are not cached.
+  final Map<String, Future<StatsSnapshot>> _inFlightStats = {};
+  final Map<String, Future<List<TopProduct>>> _inFlightTopProducts = {};
+
   StatsRepository(this._api);
 
   static const _base = '/wp-json/ezlens/v1/manager/stats';
 
-  Future<StatsSnapshot> fetch({String period = 'week'}) async {
+  Future<StatsSnapshot> fetch({String period = 'week'}) {
+    final existing = _inFlightStats[period];
+    if (existing != null) return existing;
+
+    final future = _fetchStats(period);
+    _inFlightStats[period] = future;
+    future.whenComplete(() => _inFlightStats.remove(period));
+    return future;
+  }
+
+  Future<StatsSnapshot> _fetchStats(String period) async {
     final response = await _api.wpGet<Map<String, dynamic>>(
       _base,
       queryParameters: {'period': period},
@@ -26,7 +42,21 @@ class StatsRepository {
     return const StatsSnapshot();
   }
 
-  Future<List<TopProduct>> topProducts({String by = 'views', int limit = 8}) async {
+  Future<List<TopProduct>> topProducts({String by = 'views', int limit = 8}) {
+    final key = '$by:$limit';
+    final existing = _inFlightTopProducts[key];
+    if (existing != null) return existing;
+
+    final future = _fetchTopProducts(by: by, limit: limit);
+    _inFlightTopProducts[key] = future;
+    future.whenComplete(() => _inFlightTopProducts.remove(key));
+    return future;
+  }
+
+  Future<List<TopProduct>> _fetchTopProducts({
+    required String by,
+    required int limit,
+  }) async {
     final response = await _api.wpGet<Map<String, dynamic>>(
       '$_base/top-products',
       queryParameters: {'by': by, 'limit': limit},
