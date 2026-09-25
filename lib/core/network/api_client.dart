@@ -135,7 +135,7 @@ class ApiClient {
     final started = error.requestOptions.extra['ezlens_started_at'];
     if (started is int) {
       final ms = (DateTime.now().microsecondsSinceEpoch - started) / 1000;
-      unawaited(_log.log('API ERROR ${error.requestOptions.method} ${error.requestOptions.path} → ${error.response?.statusCode ?? error.type.name} in ${ms.toStringAsFixed(0)}ms', level: 'ERROR'));
+      final detail = error.message ?? (error.error?.toString() ?? error.type.name);\n      unawaited(_log.log('API ERROR ${error.requestOptions.method} ${error.requestOptions.path} → ${error.response?.statusCode ?? error.type.name} | $detail in ${ms.toStringAsFixed(0)}ms', level: 'ERROR'));
     }
     final exception = _mapDioError(error);
 
@@ -159,7 +159,7 @@ class ApiClient {
         );
 
       case DioExceptionType.connectionError:
-        return NetworkException();
+        return NetworkException(\n          message: kIsWeb\n              ? 'ارتباط وب با API برقرار نشد؛ CORS، SSL یا شبکه را بررسی کنید.'\n              : 'خطا در اتصال به شبکه',\n        );
 
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode;
