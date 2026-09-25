@@ -59,13 +59,18 @@ class ApiClient {
         options.headers.containsKey('Authorization');
 
     if (!hasExistingAuth) {
-      final u = await _storage.getWpUsername();
-      final p = await _storage.getWpAppPassword();
-      final user = (u != null && u.isNotEmpty) ? u : ApiConfig.wpUsername;
-      final pass = (p != null && p.isNotEmpty) ? p : ApiConfig.wpAppPassword;
-      if (user.isNotEmpty && pass.isNotEmpty) {
-        options.headers['Authorization'] =
-            'Basic ${base64Encode(utf8.encode('$user:$pass'))}';
+      final token = await _storage.getAccessToken();
+      if (token != null && token.isNotEmpty && !token.startsWith('dev_session_')) {
+        options.headers['Authorization'] = 'Bearer $token';
+      } else {
+        final u = await _storage.getWpUsername();
+        final p = await _storage.getWpAppPassword();
+        final user = (u != null && u.isNotEmpty) ? u : ApiConfig.wpUsername;
+        final pass = (p != null && p.isNotEmpty) ? p : ApiConfig.wpAppPassword;
+        if (user.isNotEmpty && pass.isNotEmpty) {
+          options.headers['Authorization'] =
+              'Basic ' + base64Encode(utf8.encode(user + ':' + pass));
+        }
       }
     }
 
