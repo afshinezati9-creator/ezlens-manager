@@ -16,7 +16,22 @@ class StatsRepository {
   final Map<String, Future<StatsSnapshot>> _inFlightStats = {};
   final Map<String, Future<List<TopProduct>>> _inFlightTopProducts = {};
 
+  // Short dashboard cache: revisiting the dashboard should not immediately
+  // repeat the same read-heavy requests. Explicit refresh clears it.
+  static const _dashboardCacheTtl = Duration(seconds: 20);
+  List<TopContentItem>? _latestProductsCache;
+  DateTime? _latestProductsCachedAt;
+  List<TopContentItem>? _latestPostsCache;
+  DateTime? _latestPostsCachedAt;
+
   StatsRepository(this._api);
+
+  void clearDashboardCache() {
+    _latestProductsCache = null;
+    _latestProductsCachedAt = null;
+    _latestPostsCache = null;
+    _latestPostsCachedAt = null;
+  }
 
   static const _base = '/wp-json/ezlens/v1/manager/stats';
 
@@ -75,11 +90,21 @@ class StatsRepository {
 
   /// Latest products with view counts (newest first; views from meta/score).
   Future<List<TopContentItem>> latestProductsWithViews({int limit = 6}) async {
+    final cachedAt = _latestProductsCachedAt;
+    if (_latestProductsCache != null &&
+        cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _dashboardCacheTtl) {
+      return List<TopContentItem>.from(_latestProductsCache!);
+    }
+
     // Prefer manager top-products by views
     try {
       final tops = await topProducts(by: 'views', limit: limit);
       if (tops.isNotEmpty) {
-        return tops.map(TopContentItem.fromTopProduct).toList();
+        final result = tops.map(TopContentItem.fromTopProduct).toList();
+        _latestProductsCache = result;
+        _latestProductsCachedAt = DateTime.now();
+        return List<TopContentItem>.from(result);
       }
     } catch (_) {}
 
@@ -125,7 +150,9 @@ class StatsRepository {
           ));
         }
       }
-      return out;
+      _latestProductsCache = out;
+      _latestProductsCachedAt = DateTime.now();
+      return List<TopContentItem>.from(out);
     } catch (_) {
       return const [];
     }
@@ -133,6 +160,13 @@ class StatsRepository {
 
   /// Latest posts/articles with view counts.
   Future<List<TopContentItem>> latestPostsWithViews({int limit = 6}) async {
+    final cachedAt = _latestPostsCachedAt;
+    if (_latestPostsCache != null &&
+        cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _dashboardCacheTtl) {
+      return List<TopContentItem>.from(_latestPostsCache!);
+    }
+
     try {
       final res = await _api.wpGet<List<dynamic>>(
         '/wp-json/wp/v2/posts',
@@ -190,7 +224,9 @@ class StatsRepository {
           ));
         }
       }
-      return out;
+      _latestPostsCache = out;
+      _latestPostsCachedAt = DateTime.now();
+      return List<TopContentItem>.from(out);
     } catch (_) {
       return const [];
     }
