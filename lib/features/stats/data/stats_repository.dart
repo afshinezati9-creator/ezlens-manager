@@ -99,7 +99,7 @@ class StatsRepository {
 
     // Prefer manager top-products by views
     try {
-      final tops = await topProducts(by: 'views', limit: limit);
+      final tops = await topProducts(by: 'latest', limit: limit);
       if (tops.isNotEmpty) {
         final result = tops.map(TopContentItem.fromTopProduct).toList();
         _latestProductsCache = result;
