@@ -60,6 +60,7 @@ class UserRepository {
       role: role,
       orderby: orderby,
       order: order,
+      summary: summary,
     );
     _inFlightLists[key] = request;
     request.whenComplete(() {
@@ -196,7 +197,6 @@ class UserRepository {
     return UsersListResult(items: items, total: total, totalPages: totalPages);
   }
 
-  }
 
   ManagerUser _fromManagerJson(Map<String, dynamic> json) {
     if (json['billing'] is Map || json.containsKey('meta_data')) {
