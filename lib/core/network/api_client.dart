@@ -275,7 +275,7 @@ class ApiClient {
 
 
   Future<Map<String, String>> _authHeaders() async {
-    final token = await _storage.getAccessToken();
+    final token = await _getAccessToken();
     if (token != null && token.isNotEmpty && !token.startsWith('dev_session_')) {
       return {
         'Authorization': 'Bearer $token',
