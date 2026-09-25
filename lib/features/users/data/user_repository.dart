@@ -257,34 +257,18 @@ class UserRepository {
     String lastName = '',
     String password = '',
   }) async {
-    final mobile = phone.replaceAll(RegExp(r'\D'), '');
-    final login = mobile.startsWith('9') && mobile.length == 10
-        ? '0$mobile'
-        : mobile;
-
-    final body = <String, dynamic>{
-      'email': email.isNotEmpty ? email : '$login@ezlens.ir',
+    final mobile = phone.replaceAll(RegExp(r'\\D'), '');
+    final login = mobile.startsWith('9') && mobile.length == 10 ? '0$mobile' : mobile;
+    final response = await _api.wpPost(_mgr, data: {
       'username': login,
+      'phone': login,
+      'email': email.isNotEmpty ? email : '$login@ezlens.ir',
       'first_name': firstName,
       'last_name': lastName,
-      'billing': {
-        'first_name': firstName,
-        'last_name': lastName,
-        'phone': login,
-        'email': email.isNotEmpty ? email : '$login@ezlens.ir',
-      },
       if (password.isNotEmpty) 'password': password,
-      'meta_data': [
-        {'key': 'user_phone', 'value': login},
-        {'key': 'billing_phone', 'value': login},
-      ],
-    };
-
-    final response = await _api.wcPost(_wc, data: body);
+    });
     final data = response.data;
-    if (data is Map) {
-      return ManagerUser.fromWcJson(Map<String, dynamic>.from(data as Map));
-    }
+    if (data is Map) return _fromManagerJson(Map<String, dynamic>.from(data));
     throw Exception('خطا در ایجاد مشتری');
   }
 
@@ -300,31 +284,17 @@ class UserRepository {
       if (email != null) 'email': email,
       if (firstName != null) 'first_name': firstName,
       if (lastName != null) 'last_name': lastName,
+      if (phone != null) 'phone': phone,
       if (password != null && password.isNotEmpty) 'password': password,
     };
-    if (phone != null && phone.isNotEmpty) {
-      final p = phone.replaceAll(RegExp(r'\D'), '');
-      final normalized = (p.startsWith('9') && p.length == 10) ? '0$p' : p;
-      body['billing'] = {'phone': normalized};
-      body['meta_data'] = [
-        {'key': 'user_phone', 'value': normalized},
-        {'key': 'billing_phone', 'value': normalized},
-      ];
-    }
-
-    final response = await _api.wcPut('$_wc/$id', data: body);
+    final response = await _api.wpPut('$_mgr/$id', data: body);
     final data = response.data;
-    if (data is Map) {
-      return ManagerUser.fromWcJson(Map<String, dynamic>.from(data as Map));
-    }
+    if (data is Map) return _fromManagerJson(Map<String, dynamic>.from(data));
     throw Exception('خطا در به‌روزرسانی');
   }
 
   Future<void> deleteUser(int id, {bool force = true}) async {
-    await _api.wcDelete('$_wc/$id', queryParameters: {
-      'force': force,
-      'reassign': 0,
-    });
+    await _api.wpDelete('$_mgr/$id');
   }
 
   Future<UserDossier> fetchDossier(int id) async {
