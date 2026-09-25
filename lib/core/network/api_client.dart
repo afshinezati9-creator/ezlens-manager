@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -117,7 +118,7 @@ class ApiClient {
     final started = response.requestOptions.extra['ezlens_started_at'];
     if (started is int) {
       final ms = (DateTime.now().microsecondsSinceEpoch - started) / 1000;
-      await _log.log('API ${response.requestOptions.method} ${response.requestOptions.path} → ${response.statusCode} in ${ms.toStringAsFixed(0)}ms');
+      unawaited(_log.log('API ${response.requestOptions.method} ${response.requestOptions.path} → ${response.statusCode} in ${ms.toStringAsFixed(0)}ms'));
     }
     handler.next(response);
   }
@@ -133,7 +134,7 @@ class ApiClient {
     final started = error.requestOptions.extra['ezlens_started_at'];
     if (started is int) {
       final ms = (DateTime.now().microsecondsSinceEpoch - started) / 1000;
-      await _log.log('API ERROR ${error.requestOptions.method} ${error.requestOptions.path} → ${error.response?.statusCode ?? error.type.name} in ${ms.toStringAsFixed(0)}ms', level: 'ERROR');
+      unawaited(_log.log('API ERROR ${error.requestOptions.method} ${error.requestOptions.path} → ${error.response?.statusCode ?? error.type.name} in ${ms.toStringAsFixed(0)}ms', level: 'ERROR'));
     }
     final exception = _mapDioError(error);
 
