@@ -225,6 +225,14 @@ class ApiClient {
 
   /// Prefer credentials saved at login; fall back to ApiConfig constants.
   Future<String> _wpAuth() async {
+    // Prefer the per-device Manager bearer token. This prevents one device
+    // from invalidating another device's session.
+    final token = await _storage.getAccessToken();
+    if (token != null && token.isNotEmpty && !token.startsWith('dev_session_')) {
+      return 'Bearer $' + '{token}';
+    }
+
+    // Legacy/demo fallback only.
     final storedUser = await _storage.getWpUsername();
     final storedPass = await _storage.getWpAppPassword();
     final u = (storedUser != null && storedUser.isNotEmpty)
@@ -233,8 +241,8 @@ class ApiClient {
     final p = (storedPass != null && storedPass.isNotEmpty)
         ? storedPass
         : ApiConfig.wpAppPassword;
-    final raw = '$u:$p';
-    return 'Basic ${base64Encode(utf8.encode(raw))}';
+    final raw = '$' + '{u}:$' + '{p}';
+    return 'Basic $' + '{base64Encode(utf8.encode(raw))}';
   }
 
 
