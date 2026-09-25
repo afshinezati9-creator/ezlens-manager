@@ -93,9 +93,10 @@ class MediaRepository {
     return MediaItem.fromJson(response.data);
   }
 
-  // ===== حذف با استفاده از wcDelete (Basic Auth) برای اطمینان از دسترسی =====
+  // حذف رسانه از WordPress REST API با همان لایه احراز هویت WordPress/Manager.
+  // این endpoint متعلق به WooCommerce نیست و نباید با consumer key/secret صدا زده شود.
   Future<void> deleteMediaItem(int id) async {
-    await _api.wcDelete(
+    await _api.wpDelete(
       '/wp-json/wp/v2/media/$id',
       queryParameters: {'force': true},
     );
