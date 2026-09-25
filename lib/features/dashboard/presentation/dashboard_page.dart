@@ -224,8 +224,11 @@ class DashboardPage extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
+          // همه‌ی بخش‌های داشبورد باید در refresh واقعاً دوباره از سرور خوانده شوند.
           ref.invalidate(dashboardStatsProvider);
           ref.invalidate(dashboardRecentLoginsProvider);
+          ref.invalidate(dashboardLatestProductsProvider);
+          ref.invalidate(dashboardLatestPostsProvider);
           await Future.wait([
             ref.read(dashboardStatsProvider.future),
             ref.read(dashboardRecentLoginsProvider.future),
