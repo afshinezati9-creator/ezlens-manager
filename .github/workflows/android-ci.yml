@@ -93,11 +93,10 @@ jobs:
           sed -i '/evaluationDependsOn/d' android/build.gradle.kts || true
           sed -i 's/compileSdk = [0-9]\+/compileSdk = 36/' android/app/build.gradle.kts || true
 
-          # TEMPORARY DEVELOPMENT BUILD:
-          # Any non-empty access-code value opens the app locally.
-          # Credentials, when configured, come from GitHub Actions Secrets.
+          # Production authentication build. Demo login stays disabled in CI;
+          # real per-device bearer-token authentication is required.
           flutter build apk --release \
-            --dart-define=EZLENS_DEMO_LOGIN=true \
+            --dart-define=EZLENS_DEMO_LOGIN=false \
             --dart-define=EZLENS_WP_BASE_URL="${EZLENS_WP_BASE_URL:-https://ezlens.ir}" \
             --dart-define=EZLENS_WP_USERNAME="${EZLENS_WP_USERNAME}" \
             --dart-define=EZLENS_WP_APP_PASSWORD="${EZLENS_WP_APP_PASSWORD}" \
