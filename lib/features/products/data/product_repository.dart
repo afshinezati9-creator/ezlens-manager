@@ -228,7 +228,11 @@ class ProductRepository {
     } catch (_) {
       final response = await _api.wcGet<List<dynamic>>(
         '/wp-json/wp/v2/product_brand',
-        queryParameters: {'per_page': 100},
+        queryParameters: {
+          'per_page': 100,
+          'orderby': 'id',
+          'order': 'asc',
+        },
       );
       result = (response.data ?? [])
           .map((e) => ProductTag.fromJson(e as Map<String, dynamic>))
