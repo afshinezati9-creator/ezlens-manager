@@ -92,6 +92,7 @@ class StatsRepository {
           'orderby': 'date',
           'order': 'desc',
           'status': 'publish',
+          '_fields': 'id,name,images,date_created,meta_data',
         },
       );
       final list = res.data;
@@ -140,7 +141,8 @@ class StatsRepository {
           'orderby': 'date',
           'order': 'desc',
           'status': 'publish',
-          '_embed': '1',
+          '_embed': 'wp:featuredmedia',
+          '_fields': 'id,title,date,_embedded.wp:featuredmedia.source_url,post_views_count,meta',
         },
       );
       final list = res.data;
