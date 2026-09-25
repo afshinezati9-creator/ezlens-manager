@@ -92,6 +92,7 @@ class ApiClient {
       final token = await _getAccessToken();
       if (token != null && token.isNotEmpty && !token.startsWith('dev_session_')) {
         options.headers['Authorization'] = 'Bearer $token';
+        options.headers['X-EzLens-Token'] = token;
       } else {
         final u = await _storage.getWpUsername();
         final p = await _storage.getWpAppPassword();
@@ -276,7 +277,10 @@ class ApiClient {
   Future<Map<String, String>> _authHeaders() async {
     final token = await _storage.getAccessToken();
     if (token != null && token.isNotEmpty && !token.startsWith('dev_session_')) {
-      return {'Authorization': 'Bearer $token'};
+      return {
+        'Authorization': 'Bearer $token',
+        'X-EzLens-Token': token,
+      };
     }
     return {'Authorization': await _wpAuth()};
   }
@@ -313,7 +317,7 @@ class ApiClient {
       data: data,
       options: Options(
         headers: {
-          'Authorization': await _wpAuth(),
+          ...await _authHeaders(),
         },
       ),
     );
@@ -332,7 +336,7 @@ class ApiClient {
       data: data,
       options: Options(
         headers: {
-          'Authorization': await _wpAuth(),
+          ...await _authHeaders(),
         },
       ),
     );
@@ -351,7 +355,7 @@ class ApiClient {
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          'Authorization': await _wpAuth(),
+          ...await _authHeaders(),
         },
       ),
     );
@@ -370,7 +374,7 @@ class ApiClient {
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          'Authorization': await _wpAuth(),
+          ...await _authHeaders(),
         },
       ),
     );
@@ -391,7 +395,7 @@ class ApiClient {
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          'Authorization': await _wpAuth(),
+          ...await _authHeaders(),
         },
       ),
     );
@@ -412,7 +416,7 @@ class ApiClient {
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          'Authorization': await _wpAuth(),
+          ...await _authHeaders(),
         },
       ),
     );
@@ -431,7 +435,7 @@ class ApiClient {
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          'Authorization': await _wpAuth(),
+          ...await _authHeaders(),
         },
       ),
     );
