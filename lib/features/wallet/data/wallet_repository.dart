@@ -109,6 +109,15 @@ class WalletRepository {
     return {'pending_count': 0, 'approved_sum': 0};
   }
 
+  Future<WalletPaymentConfig> fetchPaymentConfig() async {
+    final response = await _api.wpGet<Map<String, dynamic>>('$_base/config');
+    final data = response.data;
+    if (data is Map<String, dynamic>) {
+      return WalletPaymentConfig.fromJson(data);
+    }
+    throw Exception('تنظیمات کیف پول دریافت نشد');
+  }
+
   Future<List<WalletUser>> searchUsers(String q) async {
     final response = await _api.wpGet<Map<String, dynamic>>(
       '$_base/search-users',
