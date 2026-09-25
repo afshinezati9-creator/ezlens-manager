@@ -327,6 +327,11 @@ class _WalletListPageState extends ConsumerState<WalletListPage> {
         ),
         actions: [
           IconButton(
+            tooltip: 'حساب‌های پرداخت',
+            icon: const Icon(Icons.account_balance_outlined, color: AppColors.primary),
+            onPressed: () => context.go('/wallet/accounts'),
+          ),
+          IconButton(
             tooltip: 'شارژ دستی',
             icon: const Icon(Icons.add_card_outlined, color: AppColors.primary),
             onPressed: () => context.go('/wallet/adjust'),
