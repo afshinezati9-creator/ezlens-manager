@@ -219,6 +219,15 @@ class ApiClient {
     return 'Basic ${base64Encode(utf8.encode(raw))}';
   }
 
+
+  Future<Map<String, String>> _authHeaders() async {
+    final token = await _storage.getAccessToken();
+    if (token != null && token.isNotEmpty && !token.startsWith('dev_session_')) {
+      return {'Authorization': 'Bearer $token'};
+    }
+    return {'Authorization': await _wpAuth()};
+  }
+
   // ============================================================
   // WooCommerce GET
   // ============================================================
@@ -232,7 +241,7 @@ class ApiClient {
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          'Authorization': await _wpAuth(),
+          ...await _authHeaders(),
         },
       ),
     );
