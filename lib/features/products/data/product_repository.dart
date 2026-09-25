@@ -254,7 +254,9 @@ class ProductRepository {
         '/wp-json/wc/v3/products/brands',
         data: data,
       );
-      return ProductTag.fromJson(response.data as Map<String, dynamic>);
+      final result = ProductTag.fromJson(response.data as Map<String, dynamic>);
+      clearFilterCaches();
+      return result;
     } catch (_) {
       final response = await _api.wcPost<Map<String, dynamic>>(
         '/wp-json/wp/v2/product_brand',
