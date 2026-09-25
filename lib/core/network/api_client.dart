@@ -274,7 +274,24 @@ class ApiClient {
   }
 
 
-  Future<Map<String, String>> _authHeaders() async {
+  Future<Map<String, String>> _authHeaders({required bool wooCommerce}) async {
+    if (wooCommerce) {
+      // WooCommerce is a separate API layer. Do NOT send the EzLens Manager
+      // bearer token as WooCommerce authentication. Use the WC consumer
+      // credentials configured for this build.
+      final key = ApiConfig.wcConsumerKey.trim();
+      final secret = ApiConfig.wcConsumerSecret.trim();
+      if (key.isNotEmpty && secret.isNotEmpty) {
+        return {
+          'Authorization':
+              'Basic ' + base64Encode(utf8.encode('$key:$secret')),
+        };
+      }
+      throw StateError(
+        'WooCommerce API credentials are not configured for this build.',
+      );
+    }
+
     final token = await _getAccessToken();
     if (token != null && token.isNotEmpty && !token.startsWith('dev_session_')) {
       return {
@@ -282,7 +299,26 @@ class ApiClient {
         'X-EzLens-Token': token,
       };
     }
-    return {'Authorization': await _wpAuth()};
+
+    final storedUser = await _storage.getWpUsername();
+    final storedPass = await _storage.getWpAppPassword();
+    final user = (storedUser != null && storedUser.isNotEmpty)
+        ? storedUser
+        : ApiConfig.wpUsername;
+    final pass = (storedPass != null && storedPass.isNotEmpty)
+        ? storedPass
+        : ApiConfig.wpAppPassword;
+
+    if (user.isEmpty || pass.isEmpty) {
+      throw StateError(
+        'WordPress credentials are not configured for this build.',
+      );
+    }
+
+    return {
+      'Authorization':
+          'Basic ' + base64Encode(utf8.encode('$user:$pass')),
+    };
   }
 
   // ============================================================
@@ -298,7 +334,7 @@ class ApiClient {
       queryParameters: queryParameters,
       options: Options(
         headers: {
-          ...await _authHeaders(),
+          ...await _authHeaders(wooCommerce: true),
         },
       ),
     );
@@ -317,7 +353,7 @@ class ApiClient {
       data: data,
       options: Options(
         headers: {
-          ...await _authHeaders(),
+          ...await _authHeaders(wooCommerce: false),
         },
       ),
     );
