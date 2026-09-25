@@ -41,6 +41,133 @@ class _WalletListPageState extends ConsumerState<WalletListPage> {
   Timer? _debounce;
   bool _acting = false;
 
+  Future<void> _editPaymentConfig(WalletPaymentConfig current) async {
+    final bank = TextEditingController(text: current.bankName);
+    final owner = TextEditingController(text: current.accountOwner);
+    final accountName = TextEditingController(text: current.accountName);
+    final card = TextEditingController(text: current.cardNumber);
+    final account = TextEditingController(text: current.accountNumber);
+    final iban = TextEditingController(text: current.iban);
+    final note = TextEditingController(text: current.note);
+    var online = current.onlineEnabled;
+    var cardEnabled = current.cardEnabled;
+    var bankEnabled = current.bankEnabled;
+
+    try {
+      final result = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: const Text('اطلاعات حساب کیف پول'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('درگاه پرداخت'),
+                    value: online,
+                    onChanged: (v) => setDialogState(() => online = v),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('کارت به کارت'),
+                    value: cardEnabled,
+                    onChanged: (v) => setDialogState(() => cardEnabled = v),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('اینترنت‌بانک'),
+                    value: bankEnabled,
+                    onChanged: (v) => setDialogState(() => bankEnabled = v),
+                  ),
+                  const Divider(),
+                  for (final field in [
+                    (bank, 'نام بانک'),
+                    (owner, 'صاحب حساب'),
+                    (accountName, 'عنوان حساب'),
+                    (card, 'شماره کارت'),
+                    (account, 'شماره حساب'),
+                    (iban, 'شماره شبا'),
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: TextField(
+                        controller: field.$1,
+                        decoration: InputDecoration(
+                          labelText: field.$2,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  TextField(
+                    controller: note,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'توضیحات پرداخت',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('انصراف'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('ذخیره'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (result != true) return;
+      setState(() => _acting = true);
+      await ref.read(walletRepositoryProvider).savePaymentConfig(
+            WalletPaymentConfig(
+              onlineEnabled: online,
+              cardEnabled: cardEnabled,
+              bankEnabled: bankEnabled,
+              bankName: bank.text.trim(),
+              accountOwner: owner.text.trim(),
+              accountName: accountName.text.trim(),
+              cardNumber: card.text.trim(),
+              accountNumber: account.text.trim(),
+              iban: iban.text.trim(),
+              note: note.text.trim(),
+            ),
+          );
+      ref.invalidate(walletPaymentConfigProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('اطلاعات حساب کیف پول ذخیره شد'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('خطا در ذخیره اطلاعات حساب: $e'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    } finally {
+      bank.dispose();
+      owner.dispose();
+      accountName.dispose();
+      card.dispose();
+      account.dispose();
+      iban.dispose();
+      note.dispose();
+      if (mounted) setState(() => _acting = false);
+    }
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
@@ -218,7 +345,10 @@ class _WalletListPageState extends ConsumerState<WalletListPage> {
           ref.watch(walletPaymentConfigProvider).when(
             loading: () => const SizedBox.shrink(),
             error: (_, __) => const SizedBox.shrink(),
-            data: (config) => WalletPaymentInfoCard(config: config),
+            data: (config) => WalletPaymentInfoCard(
+              config: config,
+              onEdit: () => _editPaymentConfig(config),
+            ),
           ),
           // Stats
           statsAsync.when(
