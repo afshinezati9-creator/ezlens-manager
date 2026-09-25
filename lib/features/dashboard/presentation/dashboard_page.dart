@@ -204,6 +204,14 @@ class DashboardPage extends ConsumerWidget {
     final productsAsync = ref.watch(productsViewsAsync);
     final postsAsync = ref.watch(postsViewsAsync);
 
+    void refreshDashboard() {
+      ref.read(statsRepositoryProvider).clearDashboardCache();
+      ref.invalidate(dashboardStatsProvider);
+      ref.invalidate(dashboardRecentLoginsProvider);
+      ref.invalidate(dashboardLatestProductsProvider);
+      ref.invalidate(dashboardLatestPostsProvider);
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -213,10 +221,7 @@ class DashboardPage extends ConsumerWidget {
           IconButton(
             tooltip: 'بروزرسانی',
             onPressed: () {
-              ref.invalidate(dashboardStatsProvider);
-              ref.invalidate(dashboardRecentLoginsProvider);
-              ref.invalidate(dashboardLatestProductsProvider);
-              ref.invalidate(dashboardLatestPostsProvider);
+              refreshDashboard();
             },
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -225,10 +230,7 @@ class DashboardPage extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           // همه‌ی بخش‌های داشبورد باید در refresh واقعاً دوباره از سرور خوانده شوند.
-          ref.invalidate(dashboardStatsProvider);
-          ref.invalidate(dashboardRecentLoginsProvider);
-          ref.invalidate(dashboardLatestProductsProvider);
-          ref.invalidate(dashboardLatestPostsProvider);
+          refreshDashboard();
           await Future.wait([
             ref.read(dashboardStatsProvider.future),
             ref.read(dashboardRecentLoginsProvider.future),
