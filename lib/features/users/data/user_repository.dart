@@ -22,8 +22,9 @@ class UserRepository {
     required String role,
     required String orderby,
     required String order,
+    required bool summary,
   }) =>
-      '${page}|${perPage}|${search.trim()}|${role}|${orderby}|${order}';
+      '${page}|${perPage}|${search.trim()}|${role}|${orderby}|${order}|${summary ? 1 : 0}';
 
 
   static const _wc = '/wp-json/wc/v3/customers';
@@ -38,6 +39,7 @@ class UserRepository {
     String role = '',
     String orderby = 'registered_date',
     String order = 'desc',
+    bool summary = false,
   }) {
     final key = _listKey(
       page: page,
@@ -46,6 +48,7 @@ class UserRepository {
       role: role,
       orderby: orderby,
       order: order,
+      summary: summary,
     );
     final existing = _inFlightLists[key];
     if (existing != null) return existing;
@@ -74,6 +77,7 @@ class UserRepository {
     required String role,
     required String orderby,
     required String order,
+    required bool summary,
   }) async {
     String ob = 'registered';
     if (orderby == 'name' || orderby == 'display_name') ob = 'display_name';
@@ -89,6 +93,7 @@ class UserRepository {
         'order': order,
         if (search.trim().isNotEmpty) 'search': search.trim(),
         'role': (role.isEmpty || role == 'all') ? 'all' : role,
+        if (summary) 'summary': 1,
       };
       final response = await _api.wpGet<Map<String, dynamic>>(
         _mgr,
