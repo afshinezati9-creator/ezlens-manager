@@ -27,6 +27,261 @@ class AuthRepository {
         ),
       );
 
+  Future<Response> _postRest(
+    String route, {
+    required Map<String, dynamic> data,
+  }) async {
+    final normalized = route.replaceFirst(RegExp(r'^/+'), '');
+    final cleanRoute =
+        normalized.replaceFirst(RegExp(r'^wp-json/+'), '');
+    final dio = _dio();
+
+    final primaryPath = '/wp-json/' + cleanRoute;
+    await _log.log('REST POST: ' + primaryPath);
+
+    final primary = await dio.post(primaryPath, data: data);
+
+    if (primary.statusCode != 404) {
+      return primary;
+    }
+
+    final base =
+        ApiConfig.wpBaseUrl.replaceFirst(RegExp(r'/+  Future<void> login({
+    required String username,
+    required String password,
+  }) async {
+    final u = username.trim();
+    final p = password;
+    if (u.isEmpty || p.isEmpty) {
+      throw ApiException(message: 'نام کاربری و رمز عبور را وارد کنید');
+    }
+
+    await _log.log('SERVER LOGIN: ارسال درخواست به endpoint ورود.');
+    try {
+      final res = await _postRest(
+        'ezlens/v1/manager/login',
+        data: {'username': u, 'password': p},
+      );
+      await _log.log('SERVER LOGIN: پاسخ HTTP ' + (res.statusCode?.toString() ?? 'unknown') + ' دریافت شد.');
+      await _persistLoginResponse(res);
+      await _log.log('SERVER LOGIN: پاسخ معتبر بود و اطلاعات نشست ذخیره شد.', level: 'SUCCESS');
+    } on ApiException catch (e) {
+      await _log.log('SERVER LOGIN FAILED: ' + e.message, level: 'ERROR');
+      rethrow;
+    } on DioException catch (e) {
+      await _log.log(
+        'SERVER LOGIN NETWORK ERROR: ' + (e.message ?? 'unknown'),
+        level: 'ERROR',
+      );
+      throw ApiException(
+        message: e.message ?? 'ارتباط با سرور برقرار نشد',
+      );
+    }
+    assert(_api.hashCode >= 0);
+  }
+
+  /// Temporary development access-code login.
+  ///
+  /// This skips the server master-login endpoint only when
+  /// EZLENS_DEMO_LOGIN=true was supplied at build time.
+  Future<void> loginWithMasterCode(String code) async {
+    final c = code.trim();
+    if (c.isEmpty) {
+      throw ApiException(message: 'یک مقدار برای ورود وارد کنید');
+    }
+
+    if (ApiConfig.demoLoginEnabled) {
+      final username = ApiConfig.wpUsername.trim().isNotEmpty
+          ? ApiConfig.wpUsername.trim()
+          : 'demo-admin';
+      final appPassword = ApiConfig.wpAppPassword;
+
+      await _storage.saveWpCredentials(
+        username: username,
+        appPassword: appPassword,
+      );
+      final token =
+          'dev_session_' + DateTime.now().millisecondsSinceEpoch.toString();
+      await _storage.saveAccessToken(token);
+      _api.setAccessToken(token);
+      await _storage.saveUserData(jsonEncode({
+        'username': username,
+        'email': '',
+        'display_name': 'EzLens Manager',
+        'id': 0,
+        'login_mode': 'development',
+      }));
+      return;
+    }
+
+    try {
+      final res = await _postRest(
+        'ezlens/v1/manager/master-login',
+        data: {'code': c},
+      );
+      await _persistLoginResponse(res);
+    } on ApiException {
+      rethrow;
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.message ?? 'ارتباط با سرور برقرار نشد',
+      );
+    }
+  }
+
+  Future<void> sendOtp(String mobile) async {
+    final m = _normalizeMobile(mobile);
+    if (m.length < 10) {
+      throw ApiException(message: 'شماره موبایل معتبر وارد کنید');
+    }
+    try {
+      final res = await _postRest(
+        'ezlens/v1/manager/otp/send',
+        data: {'mobile': m},
+      );
+      if (res.statusCode == 404) {
+        throw ApiException(
+          message: 'endpoint OTP مدیریت یافت نشد. پلاگین را به‌روز کنید.',
+        );
+      }
+      final data = res.data;
+      if (res.statusCode != null && res.statusCode! >= 400) {
+        throw ApiException(message: _err(data) ?? 'ارسال کد ناموفق');
+      }
+      if (data is Map && data['success'] == false) {
+        throw ApiException(message: _err(data) ?? 'ارسال کد ناموفق');
+      }
+    } on ApiException {
+      rethrow;
+    } on DioException catch (e) {
+      throw ApiException(message: e.message ?? 'ارسال کد تأیید ناموفق بود');
+    }
+  }
+
+  Future<OtpVerifyResult> verifyOtp({
+    required String mobile,
+    required String code,
+  }) async {
+    final m = _normalizeMobile(mobile);
+    final c = code.trim();
+    if (c.length < 4) {
+      throw ApiException(message: 'کد تأیید را کامل وارد کنید');
+    }
+    try {
+      final res = await _postRest(
+        'ezlens/v1/manager/otp/verify',
+        data: {'mobile': m, 'code': c},
+      );
+      if (res.statusCode == 404) {
+        throw ApiException(message: 'endpoint تأیید OTP یافت نشد');
+      }
+      if (res.statusCode != null && res.statusCode! >= 400) {
+        throw ApiException(message: _err(res.data) ?? 'کد نامعتبر است');
+      }
+      await _persistLoginResponse(res);
+      return OtpVerifyResult(loggedIn: true, mobile: m);
+    } on ApiException {
+      rethrow;
+    } on DioException catch (e) {
+      throw ApiException(message: e.message ?? 'تأیید کد ناموفق بود');
+    }
+  }
+
+  Future<void> _persistLoginResponse(Response res) async {
+    final data = res.data;
+    if (res.statusCode == 404) {
+      throw ApiException(
+        message:
+            'مسیر ورود مدیریت یافت نشد. پلاگین EzLens را به‌روز کنید و پیوند یکتا را ذخیره کنید.',
+      );
+    }
+    if (res.statusCode == 401 || res.statusCode == 403) {
+      throw ApiException(
+          message: _err(data) ?? 'نام کاربری یا رمز عبور نادرست است');
+    }
+    if (res.statusCode != 200 || data is! Map) {
+      throw ApiException(message: _err(data) ?? 'ورود ناموفق بود');
+    }
+    final map = Map<String, dynamic>.from(data);
+    if (map['success'] == false) {
+      throw ApiException(message: _err(map) ?? 'ورود ناموفق بود');
+    }
+    final loginName = (map['username'] ?? '').toString();
+    final token = (map['token'] ?? '').toString().trim();
+    if (loginName.isEmpty || token.isEmpty) {
+      throw ApiException(message: 'پاسخ سرور ناقص بود');
+    }
+    // Manager authentication is token-based and per-device.
+    // Never persist a server-generated application password here.
+    await _storage.saveAccessToken(token);
+    // Keep the same token in the ApiClient memory cache for subsequent
+    // requests, avoiding repeated encrypted-storage reads.
+    _api.setAccessToken(token);
+    await _storage.saveUserData(jsonEncode({
+      'username': loginName,
+      'email': map['user_email'],
+      'display_name': map['display_name'],
+      'id': map['user_id'],
+    }));
+  }
+
+  String? _err(dynamic data) {
+    if (data is Map) {
+      if (data['message'] != null) {
+        final m = data['message'].toString();
+        return m.replaceAll(RegExp(r'<[^>]*>'), '');
+      }
+      final d = data['data'];
+      if (d is Map && d['message'] != null) return d['message'].toString();
+      if (data['error'] != null) return data['error'].toString();
+    }
+    return null;
+  }
+
+  String _normalizeMobile(String raw) {
+    var m = raw.trim().replaceAll(RegExp(r'[\s\-]'), '');
+    m = m.replaceAll(RegExp(r'[^\d+]'), '');
+    if (m.startsWith('+98')) m = '0${m.substring(3)}';
+    if (m.startsWith('98') && m.length >= 12) m = '0${m.substring(2)}';
+    return m;
+  }
+
+  Future<void> logout() async {
+    final token = await _storage.getAccessToken();
+    if (token != null && token.isNotEmpty && !token.startsWith('dev_session_')) {
+      try {
+        await _dio().post(
+          '/wp-json/ezlens-app/v1/auth/logout',
+          options: Options(headers: {'Authorization': 'Bearer $token'}),
+        );
+      } catch (_) {
+        // Local logout must still work if the server is temporarily unreachable.
+      }
+    }
+    await _storage.clearSession();
+    _api.clearAccessToken();
+  }
+
+  Future<bool> isLoggedIn() => _storage.hasValidSession();
+}
+
+class OtpVerifyResult {
+  final bool loggedIn;
+  final String mobile;
+  OtpVerifyResult({required this.loggedIn, required this.mobile});
+}
+), '');
+    final fallbackUrl =
+        base + '/?rest_route=/' + cleanRoute;
+
+    await _log.log(
+      'REST POST: مسیر اصلی 404 بود؛ تلاش fallback',
+      level: 'WARNING',
+    );
+
+    return dio.post(fallbackUrl, data: data);
+  }
+
   /// Normal WP username + account password.
   Future<void> login({
     required String username,
@@ -41,7 +296,7 @@ class AuthRepository {
     await _log.log('SERVER LOGIN: ارسال درخواست به endpoint ورود.');
     try {
       final res = await _dio().post(
-        '/wp-json/ezlens/v1/manager/login',
+        'ezlens/v1/manager/login',
         data: {'username': u, 'password': p},
       );
       await _log.log('SERVER LOGIN: پاسخ HTTP ' + (res.statusCode?.toString() ?? 'unknown') + ' دریافت شد.');
@@ -98,7 +353,7 @@ class AuthRepository {
 
     try {
       final res = await _dio().post(
-        '/wp-json/ezlens/v1/manager/master-login',
+        'ezlens/v1/manager/master-login',
         data: {'code': c},
       );
       await _persistLoginResponse(res);
@@ -118,7 +373,7 @@ class AuthRepository {
     }
     try {
       final res = await _dio().post(
-        '/wp-json/ezlens/v1/manager/otp/send',
+        'ezlens/v1/manager/otp/send',
         data: {'mobile': m},
       );
       if (res.statusCode == 404) {
@@ -151,7 +406,7 @@ class AuthRepository {
     }
     try {
       final res = await _dio().post(
-        '/wp-json/ezlens/v1/manager/otp/verify',
+        'ezlens/v1/manager/otp/verify',
         data: {'mobile': m, 'code': c},
       );
       if (res.statusCode == 404) {
