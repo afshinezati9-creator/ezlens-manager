@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../data/wallet_models.dart';
 import '../data/wallet_repository.dart';
 import 'wallet_provider.dart';
+import 'wallet_payment_info_card.dart';
 
 String _fa(String s) {
   const en = '0123456789';
@@ -214,6 +215,11 @@ class _WalletListPageState extends ConsumerState<WalletListPage> {
       ),
       body: Column(
         children: [
+          ref.watch(walletPaymentConfigProvider).when(
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+            data: (config) => WalletPaymentInfoCard(config: config),
+          ),
           // Stats
           statsAsync.when(
             loading: () => const SizedBox.shrink(),
