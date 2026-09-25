@@ -1,0 +1,117 @@
+name: EzLens Manager - Final Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Release build type"
+        required: true
+        default: "apk"
+        type: choice
+        options:
+          - apk
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build final release APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-ezlens-final-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-ezlens-final-
+
+      - name: Configure Gradle resilience
+        run: |
+          mkdir -p ~/.gradle
+          cat > ~/.gradle/gradle.properties << 'EOF'
+          org.gradle.daemon=false
+          org.gradle.parallel=true
+          org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
+          systemProp.org.gradle.internal.http.connectionTimeout=180000
+          systemProp.org.gradle.internal.http.socketTimeout=180000
+          systemProp.org.gradle.internal.repository.max.retries=15
+          systemProp.org.gradle.internal.repository.max.tentatives=15
+          systemProp.org.gradle.internal.repository.initial.backoff=3000
+          EOF
+
+      - name: Normalize Android build flags
+        run: |
+          touch android/gradle.properties
+          grep -q '^android.newDsl=' android/gradle.properties             && sed -i 's/^android.newDsl=.*/android.newDsl=false/' android/gradle.properties             || echo 'android.newDsl=false' >> android/gradle.properties
+          grep -q '^android.builtInKotlin=' android/gradle.properties             && sed -i 's/^android.builtInKotlin=.*/android.builtInKotlin=true/' android/gradle.properties             || echo 'android.builtInKotlin=true' >> android/gradle.properties
+          sed -i '/evaluationDependsOn/d' android/build.gradle.kts || true
+          sed -i 's/compileSdk = [0-9]\+/compileSdk = 36/' android/app/build.gradle.kts || true
+          sed -i '/id("org.jetbrains.kotlin.android")/d' android/app/build.gradle.kts || true
+          sed -i '/id("kotlin-android")/d' android/app/build.gradle.kts || true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Static analysis
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build release APK
+        env:
+          EZLENS_WP_BASE_URL: ${{ secrets.EZLENS_WP_BASE_URL }}
+          EZLENS_WP_USERNAME: ${{ secrets.EZLENS_WP_USERNAME }}
+          EZLENS_WP_APP_PASSWORD: ${{ secrets.EZLENS_WP_APP_PASSWORD }}
+          EZLENS_WC_CONSUMER_KEY: ${{ secrets.EZLENS_WC_CONSUMER_KEY }}
+          EZLENS_WC_CONSUMER_SECRET: ${{ secrets.EZLENS_WC_CONSUMER_SECRET }}
+        run: |
+          set -o pipefail
+          flutter build apk --release             --dart-define=EZLENS_DEMO_LOGIN=false             --dart-define=EZLENS_WP_BASE_URL="${EZLENS_WP_BASE_URL:-https://ezlens.ir}"             --dart-define=EZLENS_WP_USERNAME="${EZLENS_WP_USERNAME}"             --dart-define=EZLENS_WP_APP_PASSWORD="${EZLENS_WP_APP_PASSWORD}"             --dart-define=EZLENS_WC_CONSUMER_KEY="${EZLENS_WC_CONSUMER_KEY}"             --dart-define=EZLENS_WC_CONSUMER_SECRET="${EZLENS_WC_CONSUMER_SECRET}"             2>&1 | tee build-log.txt
+
+      - name: Verify APK exists
+        run: |
+          test -s build/app/outputs/flutter-apk/app-release.apk
+          ls -lh build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ezlens-manager-final-build-log
+          path: build-log.txt
+          if-no-files-found: ignore
+
+      - name: Upload final APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ezlens-manager-final-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
