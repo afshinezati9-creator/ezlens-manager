@@ -160,7 +160,9 @@ class ApiClient {
         );
 
       case DioExceptionType.connectionError:
-        return NetworkException(\n          message: kIsWeb\n              ? 'ارتباط وب با API برقرار نشد؛ CORS، SSL یا شبکه را بررسی کنید.'\n              : 'خطا در اتصال به شبکه',\n        );
+        return NetworkException(
+          message: kIsWeb\n              ? 'ارتباط وب با API برقرار نشد؛ CORS، SSL یا شبکه را بررسی کنید.'\n              : 'خطا در اتصال به شبکه',
+        );
 
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode;
