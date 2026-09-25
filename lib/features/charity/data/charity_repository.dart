@@ -50,24 +50,17 @@ class CharityRepository {
     bool isPublic = true,
   }) async {
     final path = id > 0 ? '$_base/cases/$id' : '$_base/cases';
+    final body = {
+      'title': title,
+      'summary': summary,
+      'need_type': needType,
+      'goal_amount': goalAmount,
+      'status': status,
+      'is_public': isPublic,
+    };
     final response = id > 0
-        ? await _api.wpPost<Map<String, dynamic>>(path, data: {
-            'title': title,
-            'summary': summary,
-            'need_type': needType,
-            'goal_amount': goalAmount,
-            'status': status,
-            'is_public': isPublic,
-          })
-        : await _api.wpPost<Map<String, dynamic>>(path, data: {
-            'title': title,
-            'summary': summary,
-            'need_type': needType,
-            'goal_amount': goalAmount,
-            'status': status,
-            'is_public': isPublic,
-          });
-    // For update, some clients use PUT — wpPost is fine if route is EDITABLE accepting POST
+        ? await _api.wpPut<Map<String, dynamic>>(path, data: body)
+        : await _api.wpPost<Map<String, dynamic>>(path, data: body);
     final data = response.data;
     if (data != null && data['case'] is Map) {
       return CharityCase.fromJson(Map<String, dynamic>.from(data['case'] as Map));
