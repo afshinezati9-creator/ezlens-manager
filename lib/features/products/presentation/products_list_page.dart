@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../data/product_models.dart';
@@ -1915,6 +1916,24 @@ class _ProductsListPageState
                                           .end,
                                   children: [
 
+                                    if (product.permalink != null && product.permalink!.isNotEmpty)
+                                      TextButton.icon(
+                                        onPressed: () async {
+                                          final uri = Uri.tryParse(product.permalink!);
+                                          if (uri != null) {
+                                            await launchUrl(
+                                              uri,
+                                              mode: LaunchMode.externalApplication,
+                                            );
+                                          }
+                                        },
+                                        icon: const Icon(
+                                          Icons.open_in_new_rounded,
+                                          size: 16,
+                                        ),
+                                        label: const Text('مشاهده در سایت'),
+                                      ),
+                                    const SizedBox(width: 4),
                                     TextButton
                                         .icon(
                                       onPressed:
