@@ -558,6 +558,38 @@ class _ProductsListPageState
 
 
   // ===========================================================
+  // View product on site
+  // ===========================================================
+
+  Future<void> _openProduct(Product product) async {
+    final raw = product.permalink?.trim() ?? '';
+    if (raw.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لینک محصول در دسترس نیست')),
+      );
+      return;
+    }
+
+    final uri = Uri.tryParse(raw);
+    if (uri == null || !uri.hasScheme) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لینک محصول نامعتبر است')),
+      );
+      return;
+    }
+
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('باز کردن صفحه محصول انجام نشد')),
+      );
+    }
+  }
+
+
+  // ===========================================================
   // Delete
   // ===========================================================
 
