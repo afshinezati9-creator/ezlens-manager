@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../data/wallet_models.dart';
+import '../data/wallet_payment_models.dart';
 
 class WalletPaymentInfoCard extends StatelessWidget {
-  final WalletPaymentConfig config;
+  final WalletPaymentSettings config;
   final VoidCallback? onEdit;
 
   const WalletPaymentInfoCard({
@@ -183,9 +183,9 @@ class WalletPaymentInfoCard extends StatelessWidget {
               _method('اینترنت‌بانک', config.bankEnabled),
             ],
           ),
-          if (config.hasAccountData) ...[
+          if (!config.account.isEmpty) ...[
             const Divider(height: 24),
-            if (config.bankName.isNotEmpty || config.accountOwner.isNotEmpty)
+            if (config.account.bankName.isNotEmpty || config.account.owner.isNotEmpty)
               Row(
                 children: [
                   Expanded(
@@ -207,7 +207,7 @@ class WalletPaymentInfoCard extends StatelessWidget {
                     ),
                 ],
               ),
-            if (config.accountName.isNotEmpty)
+            if (config.account.accountName.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
@@ -221,22 +221,22 @@ class WalletPaymentInfoCard extends StatelessWidget {
             _valueRow(
               context,
               label: 'شماره کارت',
-              value: config.cardNumber,
+              value: config.account.cardNumber,
               ltr: true,
             ),
             _valueRow(
               context,
               label: 'شماره حساب',
-              value: config.accountNumber,
+              value: config.account.accountNumber,
               ltr: true,
             ),
             _valueRow(
               context,
               label: 'شماره شبا',
-              value: config.iban,
+              value: config.account.iban,
               ltr: true,
             ),
-            if (config.note.isNotEmpty)
+            if (config.account.note.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: Text(
