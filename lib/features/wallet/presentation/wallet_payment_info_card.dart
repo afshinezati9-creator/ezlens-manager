@@ -199,7 +199,7 @@ class WalletPaymentInfoCard extends StatelessWidget {
                   ),
                   if (config.account.owner.isNotEmpty)
                     Text(
-                      config.accountOwner,
+                      config.account.owner,
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.textSecondary,
