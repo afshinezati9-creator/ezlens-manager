@@ -62,6 +62,27 @@ class CampaignRepository {
     throw Exception(data != null ? (data['message'] ?? 'خطا') : 'خطا در ذخیره دفترچه');
   }
 
+  Future<ContactBook> updateBook(
+    int id, {
+    String? name,
+    String? description,
+    List<int>? contactIds,
+  }) async {
+    final response = await _api.wpPut<Map<String, dynamic>>(
+      '$_base/books/$id',
+      data: {
+        if (name != null) 'name': name,
+        if (description != null) 'description': description,
+        if (contactIds != null) 'contact_ids': contactIds,
+      },
+    );
+    final data = response.data;
+    if (data != null && data['book'] is Map) {
+      return ContactBook.fromJson(Map<String, dynamic>.from(data['book'] as Map));
+    }
+    throw Exception(data != null ? (data['message'] ?? 'خطا در ویرایش دفترچه') : 'خطا در ویرایش دفترچه');
+  }
+
   Future<void> deleteBook(int id) async {
     await _api.wpDelete('$_base/books/$id');
   }
@@ -138,6 +159,29 @@ class CampaignRepository {
     final data = response.data;
     if (data is Map<String, dynamic>) return data;
     throw Exception('خطا در ایجاد کمپین');
+  }
+
+  Future<Map<String, dynamic>> updateCampaign(
+    int id, {
+    String? name,
+    String? subject,
+    String? message,
+    String? status,
+    int? bookId,
+  }) async {
+    final response = await _api.wpPut<Map<String, dynamic>>(
+      '$_base/campaigns/$id',
+      data: {
+        if (name != null) 'name': name,
+        if (subject != null) 'subject': subject,
+        if (message != null) 'message': message,
+        if (status != null) 'status': status,
+        if (bookId != null) 'book_id': bookId,
+      },
+    );
+    final data = response.data;
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('خطا در ویرایش کمپین');
   }
 
   Future<void> deleteCampaign(int id) async {
