@@ -347,7 +347,10 @@ class AuthRepository {
     _api.clearAccessToken();
   }
 
-  Future<bool> isLoggedIn() => _storage.hasValidSession();
+  Future<bool> isLoggedIn() async {
+    final token = await _storage.getAccessToken();
+    return token != null && token.trim().isNotEmpty;
+  }
 }
 
 class OtpVerifyResult {
