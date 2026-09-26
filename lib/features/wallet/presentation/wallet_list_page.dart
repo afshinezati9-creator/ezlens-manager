@@ -7,7 +7,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../data/wallet_models.dart';
-import '../data/wallet_payment_models.dart';
 import '../data/wallet_repository.dart';
 import 'wallet_provider.dart';
 import 'wallet_payment_info_card.dart';
