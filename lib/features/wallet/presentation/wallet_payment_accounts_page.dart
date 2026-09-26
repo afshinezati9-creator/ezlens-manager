@@ -71,6 +71,24 @@ class _WalletPaymentAccountsPageState
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // The enabled manual methods must have the account data required to
+    // complete that payment flow. Online gateway does not need bank data.
+    if (_card && _cardNumber.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('برای کارت به کارت، شماره کارت را وارد کنید')),
+      );
+      return;
+    }
+    if (_bank &&
+        _accountNumber.text.trim().isEmpty &&
+        _iban.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('برای اینترنت‌بانک، شماره حساب یا شبا را وارد کنید')),
+      );
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       final repo = ref.read(walletPaymentSettingsRepositoryProvider);
@@ -188,7 +206,7 @@ class _WalletPaymentAccountsPageState
                 _section(
                   title: 'روش‌های پرداخت',
                   subtitle:
-                      'هر روشی را خاموش کنید، همان روش از کیف پول مشتری نیز حذف می‌شود.',
+                      'روش‌های غیرفعال از کیف پول مشتری پنهان می‌شوند. درگاه آنلاین به اطلاعات حساب بانکی نیاز ندارد.',
                   child: Column(
                     children: [
                       _toggle('درگاه پرداخت', 'شارژ آنلاین کیف پول', Icons.credit_card_outlined,
@@ -204,7 +222,7 @@ class _WalletPaymentAccountsPageState
                 const SizedBox(height: 14),
                 _section(
                   title: 'اطلاعات حساب',
-                  subtitle: 'این اطلاعات مستقیماً در کیف پول مشتری نمایش داده می‌شود.',
+                  subtitle: 'این اطلاعات در روش‌های دستی کیف پول مشتری نمایش داده می‌شود و از همین‌جا مدیریت می‌گردد.',
                   child: Column(
                     children: [
                       _field(_bankName, 'نام بانک', Icons.account_balance_outlined),
@@ -296,6 +314,7 @@ class _WalletPaymentAccountsPageState
         keyboardType: ltr ? TextInputType.number : TextInputType.text,
         decoration: InputDecoration(
           labelText: label,
+          hintText: ltr ? 'فقط عدد وارد کنید' : null,
           prefixIcon: Icon(icon, size: 20),
           filled: true,
           fillColor: AppColors.background,
