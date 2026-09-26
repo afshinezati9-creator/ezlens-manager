@@ -112,10 +112,6 @@ class SecureStorageService {
 
   Future<bool> hasValidSession() async {
     final token = await getAccessToken();
-    if (token != null && token.isNotEmpty) return true;
-    final user = await getWpUsername();
-    final pass = await getWpAppPassword();
-    return (user != null && user.isNotEmpty) &&
-        (pass != null && pass.isNotEmpty);
+    return token != null && token.trim().isNotEmpty;
   }
 }
