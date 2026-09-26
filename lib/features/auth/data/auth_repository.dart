@@ -335,7 +335,7 @@ class AuthRepository {
         !token.startsWith('dev_session_')) {
       try {
         await _dio().post(
-          '/wp-json/ezlens-app/v1/auth/logout',
+          '/wp-json/ezlens/v1/manager/logout',
           options: Options(
             headers: {'Authorization': 'Bearer $token'},
           ),
