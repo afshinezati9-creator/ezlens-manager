@@ -151,7 +151,7 @@ class _WalletPaymentAccountsPageState
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('روش‌های پرداخت کیف پول'),
+        title: const Text('تنظیمات کیف پول'),
         centerTitle: true,
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -161,7 +161,7 @@ class _WalletPaymentAccountsPageState
         ),
         actions: [
           IconButton(
-            tooltip: 'به‌روزرسانی',
+            tooltip: 'بازخوانی تنظیمات',
             onPressed: () {
               _initialized = false;
               ref.invalidate(walletPaymentSettingsProvider);
