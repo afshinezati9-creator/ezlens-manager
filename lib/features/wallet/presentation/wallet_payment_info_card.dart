@@ -190,14 +190,14 @@ class WalletPaymentInfoCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      config.bankName,
+                      config.account.bankName,
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
-                  if (config.accountOwner.isNotEmpty)
+                  if (config.account.owner.isNotEmpty)
                     Text(
                       config.accountOwner,
                       style: const TextStyle(
@@ -211,7 +211,7 @@ class WalletPaymentInfoCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  config.accountName,
+                  config.account.accountName,
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.textMuted,
@@ -240,7 +240,7 @@ class WalletPaymentInfoCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: Text(
-                  config.note,
+                  config.account.note,
                   style: const TextStyle(
                     fontSize: 11,
                     height: 1.7,
