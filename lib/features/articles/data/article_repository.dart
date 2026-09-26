@@ -507,6 +507,14 @@ class ArticleRepository {
     return ArticleCategory.fromJson(response.data as Map<String, dynamic>);
   }
 
+  Future<ArticleCategory> updateCategory(int id, Map<String, dynamic> data) async {
+    final response = await _api.wpPut<Map<String, dynamic>>(
+      '/wp-json/wp/v2/categories/$id',
+      data: data,
+    );
+    return ArticleCategory.fromJson(response.data as Map<String, dynamic>);
+  }
+
   Future<void> deleteCategory(int id) async {
     await _api.wpDelete(
       '/wp-json/wp/v2/categories/$id',
@@ -550,6 +558,21 @@ class ArticleRepository {
       }
     }
     return allTags;
+  }
+
+  Future<ArticleTag> updateTag(int id, Map<String, dynamic> data) async {
+    final response = await _api.wpPut<Map<String, dynamic>>(
+      '/wp-json/wp/v2/tags/$id',
+      data: data,
+    );
+    return ArticleTag.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteTag(int id) async {
+    await _api.wpDelete(
+      '/wp-json/wp/v2/tags/$id',
+      queryParameters: {'force': 'true'},
+    );
   }
 
   Future<ArticleTag> createTag(Map<String, dynamic> data) async {
