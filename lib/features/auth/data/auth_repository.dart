@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/config/api_config.dart';
 import '../../../core/debug/debug_log_service.dart';
 import '../../../core/network/api_client.dart';
@@ -68,7 +69,12 @@ class AuthRepository {
     try {
       final res = await _postRest(
         'ezlens/v1/manager/login',
-        data: {'username': u, 'password': p},
+        data: {
+          'username': u,
+          'password': p,
+          'device_name': 'EzLens Manager',
+          'platform': kIsWeb ? 'web' : 'android',
+        },
       );
 
       await _log.log(
@@ -139,7 +145,11 @@ class AuthRepository {
     try {
       final res = await _postRest(
         'ezlens/v1/manager/master-login',
-        data: {'code': c},
+        data: {
+          'code': c,
+          'device_name': 'EzLens Manager',
+          'platform': kIsWeb ? 'web' : 'android',
+        },
       );
 
       await _persistLoginResponse(res);
@@ -162,7 +172,11 @@ class AuthRepository {
     try {
       final res = await _postRest(
         'ezlens/v1/manager/otp/send',
-        data: {'mobile': m},
+        data: {
+          'mobile': m,
+          'device_name': 'EzLens Manager',
+          'platform': kIsWeb ? 'web' : 'android',
+        },
       );
 
       final data = res.data;
@@ -201,7 +215,12 @@ class AuthRepository {
     try {
       final res = await _postRest(
         'ezlens/v1/manager/otp/verify',
-        data: {'mobile': m, 'code': c},
+        data: {
+          'mobile': m,
+          'code': c,
+          'device_name': 'EzLens Manager',
+          'platform': kIsWeb ? 'web' : 'android',
+        },
       );
 
       if (res.statusCode != null && res.statusCode! >= 400) {
