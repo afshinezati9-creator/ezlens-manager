@@ -255,6 +255,23 @@ class ProductRepository {
     return result;
   }
 
+  Future<ProductCategory> updateCategory(int id, Map<String, dynamic> data) async {
+    final response = await _api.wcPut<Map<String, dynamic>>(
+      '/wp-json/wc/v3/products/categories/$id',
+      data: data,
+    );
+    clearFilterCaches();
+    return ProductCategory.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteCategory(int id) async {
+    await _api.wcDelete(
+      '/wp-json/wc/v3/products/categories/$id',
+      queryParameters: {'force': true},
+    );
+    clearFilterCaches();
+  }
+
   // ===== ایجاد برند =====
   Future<ProductTag> createBrand(Map<String, dynamic> data) async {
     try {
@@ -274,6 +291,56 @@ class ProductRepository {
       clearFilterCaches();
       return result;
     }
+  }
+
+  Future<ProductTag> updateBrand(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await _api.wcPut<Map<String, dynamic>>(
+        '/wp-json/wc/v3/products/brands/$id',
+        data: data,
+      );
+      clearFilterCaches();
+      return ProductTag.fromJson(response.data as Map<String, dynamic>);
+    } catch (_) {
+      final response = await _api.wpPut<Map<String, dynamic>>(
+        '/wp-json/wp/v2/product_brand/$id',
+        data: data,
+      );
+      clearFilterCaches();
+      return ProductTag.fromJson(response.data as Map<String, dynamic>);
+    }
+  }
+
+  Future<void> deleteBrand(int id) async {
+    try {
+      await _api.wcDelete(
+        '/wp-json/wc/v3/products/brands/$id',
+        queryParameters: {'force': true},
+      );
+    } catch (_) {
+      await _api.wpDelete(
+        '/wp-json/wp/v2/product_brand/$id',
+        queryParameters: {'force': true},
+      );
+    }
+    clearFilterCaches();
+  }
+
+  Future<ProductTag> updateTag(int id, Map<String, dynamic> data) async {
+    final response = await _api.wcPut<Map<String, dynamic>>(
+      '/wp-json/wc/v3/products/tags/$id',
+      data: data,
+    );
+    clearFilterCaches();
+    return ProductTag.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteTag(int id) async {
+    await _api.wcDelete(
+      '/wp-json/wc/v3/products/tags/$id',
+      queryParameters: {'force': true},
+    );
+    clearFilterCaches();
   }
 
   // ===== ایجاد تگ =====
