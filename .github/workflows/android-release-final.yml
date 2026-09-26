@@ -81,6 +81,20 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+      - name: Validate required API secrets
+        env:
+          WP_BASE_URL: ${{ secrets.EZLENS_WP_BASE_URL }}
+          WP_USERNAME: ${{ secrets.EZLENS_WP_USERNAME }}
+          WP_APP_PASSWORD: ${{ secrets.EZLENS_WP_APP_PASSWORD }}
+          WC_KEY: ${{ secrets.EZLENS_WC_CONSUMER_KEY }}
+          WC_SECRET: ${{ secrets.EZLENS_WC_CONSUMER_SECRET }}
+        run: |
+          test -n "${WP_BASE_URL}" || (echo "Missing EZLENS_WP_BASE_URL" && exit 1)
+          test -n "${WP_USERNAME}" || (echo "Missing EZLENS_WP_USERNAME" && exit 1)
+          test -n "${WP_APP_PASSWORD}" || (echo "Missing EZLENS_WP_APP_PASSWORD" && exit 1)
+          test -n "${WC_KEY}" || (echo "Missing EZLENS_WC_CONSUMER_KEY" && exit 1)
+          test -n "${WC_SECRET}" || (echo "Missing EZLENS_WC_CONSUMER_SECRET" && exit 1)
+
 
       - name: Static analysis
         run: flutter analyze --no-fatal-infos
