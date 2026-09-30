@@ -1,0 +1,49 @@
+# ===== Flutter/Dart =====
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.dill
+*.dill.d
+*.iml
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ===== حساس =====
+*.keystore
+*.jks
+key.properties
+google-services.json
+GoogleService-Info.plist
+
+# ===== فایل‌های لاگ =====
+*.log
+*.tmp
+*.bak
+
+# ===== iOS/macOS =====
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+macos/Pods/
+
+# ===== Android =====
+android/.gradle/
+android/captures/
+android/local.properties
+android/key.properties
+android/app/debug/
+android/app/profile/
+android/app/release/

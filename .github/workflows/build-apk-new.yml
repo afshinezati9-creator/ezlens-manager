@@ -1,0 +1,84 @@
+name: EzLens Manager - Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-ezlens-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-ezlens-gradle-
+
+      - name: Prepare Gradle
+        run: |
+          mkdir -p ~/.gradle
+          cat > ~/.gradle/gradle.properties << 'PROPS'
+          org.gradle.daemon=false
+          org.gradle.parallel=true
+          org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
+          systemProp.org.gradle.internal.http.connectionTimeout=180000
+          systemProp.org.gradle.internal.http.socketTimeout=180000
+          systemProp.org.gradle.internal.repository.max.retries=15
+          systemProp.org.gradle.internal.repository.initial.backoff=3000
+          PROPS
+
+      - name: Prepare Flutter dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        env:
+          EZLENS_WP_BASE_URL: ${{ secrets.EZLENS_WP_BASE_URL }}
+          EZLENS_WP_USERNAME: ${{ secrets.EZLENS_WP_USERNAME }}
+          EZLENS_WP_APP_PASSWORD: ${{ secrets.EZLENS_WP_APP_PASSWORD }}
+          EZLENS_WC_CONSUMER_KEY: ${{ secrets.EZLENS_WC_CONSUMER_KEY }}
+          EZLENS_WC_CONSUMER_SECRET: ${{ secrets.EZLENS_WC_CONSUMER_SECRET }}
+        run: |
+          set -euo pipefail
+          flutter build apk --release             --android-skip-build-dependency-validation             --dart-define=EZLENS_DEMO_LOGIN=false             --dart-define=EZLENS_WP_BASE_URL="${EZLENS_WP_BASE_URL:-https://ezlens.ir}"             --dart-define=EZLENS_WP_USERNAME="${EZLENS_WP_USERNAME}"             --dart-define=EZLENS_WP_APP_PASSWORD="${EZLENS_WP_APP_PASSWORD}"             --dart-define=EZLENS_WC_CONSUMER_KEY="${EZLENS_WC_CONSUMER_KEY}"             --dart-define=EZLENS_WC_CONSUMER_SECRET="${EZLENS_WC_CONSUMER_SECRET}"
+
+      - name: Rename APK
+        run: |
+          mkdir -p release
+          cp build/app/outputs/flutter-apk/app-release.apk release/ezlens-manager-release.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ezlens-manager-release-apk
+          path: release/ezlens-manager-release.apk
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,16 @@
+name: EzLens Manager - Final Android APK
+
+# Disabled duplicate — use "Build Android APK" (android-ci.yml) only.
+# Keeping file so history is preserved; workflow_dispatch only if needed.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Notice
+        run: |
+          echo "Use workflow: Build Android APK (android-ci.yml)"
+          echo "This duplicate workflow is intentionally idle."

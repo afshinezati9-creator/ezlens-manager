@@ -1,0 +1,155 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-agp8111-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-agp8111-
+
+      - name: Gradle resilience
+        run: |
+          mkdir -p ~/.gradle
+          cat > ~/.gradle/gradle.properties << 'PROPS'
+          org.gradle.daemon=false
+          org.gradle.parallel=true
+          org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
+          systemProp.org.gradle.internal.http.connectionTimeout=180000
+          systemProp.org.gradle.internal.http.socketTimeout=180000
+          systemProp.org.gradle.internal.repository.max.retries=15
+          systemProp.org.gradle.internal.repository.max.tentatives=15
+          systemProp.org.gradle.internal.repository.initial.backoff=3000
+          PROPS
+
+      - name: Lock Android Gradle stack (AGP 8.11.1 / Gradle 8.14.3)
+        run: |
+          set -e
+          # Force AGP 8.11.1 + Kotlin 2.1.0 (never AGP 9 in this CI)
+          cat > android/settings.gradle.kts << 'SETTINGS'
+          pluginManagement {
+              val flutterSdkPath =
+                  run {
+                      val properties = java.util.Properties()
+                      file("local.properties").inputStream().use { properties.load(it) }
+                      val flutterSdkPath = properties.getProperty("flutter.sdk")
+                      require(flutterSdkPath != null) { "flutter.sdk not set in local.properties" }
+                      flutterSdkPath
+                  }
+              includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          plugins {
+              id("dev.flutter.flutter-plugin-loader") version "1.0.0"
+              id("com.android.application") version "8.11.1" apply false
+              id("org.jetbrains.kotlin.android") version "2.1.0" apply false
+          }
+          include(":app")
+          SETTINGS
+
+          cat > android/gradle/wrapper/gradle-wrapper.properties << 'WRAP'
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-all.zip
+          WRAP
+
+          touch android/gradle.properties
+          grep -q '^android.newDsl=' android/gradle.properties \
+            && sed -i 's/^android.newDsl=.*/android.newDsl=false/' android/gradle.properties \
+            || echo 'android.newDsl=false' >> android/gradle.properties
+          grep -q '^android.useAndroidX=' android/gradle.properties \
+            || echo 'android.useAndroidX=true' >> android/gradle.properties
+          sed -i '/evaluationDependsOn/d' android/build.gradle.kts || true
+          sed -i 's/compileSdk = [0-9]\+/compileSdk = 36/' android/app/build.gradle.kts || true
+
+          # Ensure desugaring is present for flutter_local_notifications
+          if ! grep -q 'isCoreLibraryDesugaringEnabled' android/app/build.gradle.kts; then
+            echo "WARN: desugaring flag missing — app/build.gradle.kts should enable it"
+          fi
+
+          if [ ! -f lib/core/config/api_config.dart ]; then
+            if [ -f lib/core/config/api_config.example.dart ]; then
+              cp lib/core/config/api_config.example.dart lib/core/config/api_config.dart
+            else
+              mkdir -p lib/core/config
+              printf '%s\n' 'class ApiConfig {' "  static const String wpBaseUrl = 'https://ezlens.ir';" "  static const String wpUsername = '';" "  static const String wpAppPassword = '';" "  static const String wcConsumerKey = '';" "  static const String wcConsumerSecret = '';" '}' > lib/core/config/api_config.dart
+            fi
+          fi
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Build APK
+        env:
+          EZLENS_WP_BASE_URL: ${{ secrets.EZLENS_WP_BASE_URL }}
+          EZLENS_WP_USERNAME: ${{ secrets.EZLENS_WP_USERNAME }}
+          EZLENS_WP_APP_PASSWORD: ${{ secrets.EZLENS_WP_APP_PASSWORD }}
+          EZLENS_WC_CONSUMER_KEY: ${{ secrets.EZLENS_WC_CONSUMER_KEY }}
+          EZLENS_WC_CONSUMER_SECRET: ${{ secrets.EZLENS_WC_CONSUMER_SECRET }}
+        run: |
+          set -o pipefail
+          flutter build apk --release \
+            --android-skip-build-dependency-validation \
+            --dart-define=EZLENS_DEMO_LOGIN=false \
+            --dart-define=EZLENS_WP_BASE_URL="${EZLENS_WP_BASE_URL:-https://ezlens.ir}" \
+            --dart-define=EZLENS_WP_USERNAME="${EZLENS_WP_USERNAME}" \
+            --dart-define=EZLENS_WP_APP_PASSWORD="${EZLENS_WP_APP_PASSWORD}" \
+            --dart-define=EZLENS_WC_CONSUMER_KEY="${EZLENS_WC_CONSUMER_KEY}" \
+            --dart-define=EZLENS_WC_CONSUMER_SECRET="${EZLENS_WC_CONSUMER_SECRET}" \
+            2>&1 | tee build-log.txt
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build-log.txt
+          if-no-files-found: ignore
+
+      - name: List APK
+        if: always()
+        run: find build -name "*.apk" 2>/dev/null || true
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ezlens-manager-apk
+          path: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
