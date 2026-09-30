@@ -1,7 +1,6 @@
 // lib/features/products/presentation/product_form_page.dart
 // نسخه نهایی - کامل، ایجکسی، بدون رفرش، پیام زیر فرم، لود برند و سئو
 
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1036,20 +1035,15 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   }
 
   Future<int> _uploadImage(Uint8List bytes, String fileName) async {
+    // Web-safe: MultipartFile.fromBytes (dart:io File fails on Chrome with _Namespace)
     final apiClient = ref.read(apiClientProvider);
-    final tempFile = File('temp_$fileName');
-    await tempFile.writeAsBytes(bytes);
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(
-        tempFile.path,
-        filename: fileName,
-      ),
+      'file': MultipartFile.fromBytes(bytes, filename: fileName),
     });
     final response = await apiClient.uploadMedia(
       '/wp-json/wp/v2/media',
       formData: formData,
     );
-    await tempFile.delete();
     return response.data['id'];
   }
 

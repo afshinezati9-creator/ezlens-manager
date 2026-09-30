@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../../core/widgets/collapsible_filter_box.dart';
 import '../../../core/widgets/app_skeleton.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,6 +29,8 @@ class InboxListPage extends ConsumerStatefulWidget {
 }
 
 class _InboxListPageState extends ConsumerState<InboxListPage> {
+  final Set<int> _selectedUids = {};
+  bool _selectMode = false;
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
 
@@ -45,6 +48,37 @@ class _InboxListPageState extends ConsumerState<InboxListPage> {
       ref.read(inboxQueryProvider.notifier).state =
           q.copyWith(search: v.trim(), page: 1);
     });
+  }
+
+  Future<void> _bulkDelete() async {
+    if (_selectedUids.isEmpty) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف گروهی'),
+        content: Text('${_selectedUids.length} پیام حذف شود؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('انصراف')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final repo = ref.read(inboxRepositoryProvider);
+    for (final uid in _selectedUids.toList()) {
+      try {
+        await repo.deleteMessage(uid);
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    setState(() {
+      _selectedUids.clear();
+      _selectMode = false;
+    });
+    ref.invalidate(inboxListProvider);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('پیام‌های انتخاب‌شده حذف شدند')),
+    );
   }
 
   Future<void> _delete(InboxMessageSummary m) async {
@@ -104,11 +138,36 @@ class _InboxListPageState extends ConsumerState<InboxListPage> {
           onPressed: () => context.go('/more'),
         ),
         actions: [
-          IconButton(
-            tooltip: 'بروزرسانی',
-            icon: const Icon(Icons.refresh, color: AppColors.primary),
-            onPressed: () => ref.invalidate(inboxListProvider),
-          ),
+          if (_selectMode) ...[
+            if (_selectedUids.isNotEmpty)
+              IconButton(
+                tooltip: 'حذف گروهی (${_selectedUids.length})',
+                icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                onPressed: _bulkDelete,
+              ),
+            IconButton(
+              tooltip: 'لغو انتخاب',
+              icon: const Icon(Icons.close),
+              onPressed: () => setState(() {
+                _selectMode = false;
+                _selectedUids.clear();
+              }),
+            ),
+          ] else ...[
+            IconButton(
+              tooltip: 'انتخاب چندتایی',
+              icon: const Icon(Icons.checklist_rtl, color: AppColors.primary),
+              onPressed: () => setState(() {
+                _selectMode = true;
+                _selectedUids.clear();
+              }),
+            ),
+            IconButton(
+              tooltip: 'بروزرسانی',
+              icon: const Icon(Icons.refresh, color: AppColors.primary),
+              onPressed: () => ref.invalidate(inboxListProvider),
+            ),
+          ],
         ],
       ),
       body: Column(
@@ -116,57 +175,63 @@ class _InboxListPageState extends ConsumerState<InboxListPage> {
           Container(
             color: AppColors.surface,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _searchCtrl,
-                  onChanged: _onSearch,
-                  decoration: InputDecoration(
-                    hintText: 'جستجو در موضوع و متن...',
-                    prefixIcon: const Icon(Icons.search),
-                    filled: true,
-                    fillColor: AppColors.background,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border),
+            child: CollapsibleFilterBox(
+              title: 'فیلتر صندوق ورودی',
+              summary: query.filter == 'unseen'
+                  ? 'خوانده‌نشده'
+                  : (query.filter == 'seen' ? 'خوانده‌شده' : 'همه'),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _searchCtrl,
+                    onChanged: _onSearch,
+                    decoration: InputDecoration(
+                      hintText: 'جستجو در موضوع و متن...',
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: AppColors.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _Chip(
-                        label: 'همه',
-                        selected: query.filter == 'all',
-                        onTap: () => ref
-                            .read(inboxQueryProvider.notifier)
-                            .state = query.copyWith(filter: 'all', page: 1),
-                      ),
-                      _Chip(
-                        label: 'خوانده‌نشده',
-                        selected: query.filter == 'unseen',
-                        onTap: () => ref
-                            .read(inboxQueryProvider.notifier)
-                            .state =
-                            query.copyWith(filter: 'unseen', page: 1),
-                      ),
-                      _Chip(
-                        label: 'خوانده‌شده',
-                        selected: query.filter == 'seen',
-                        onTap: () => ref
-                            .read(inboxQueryProvider.notifier)
-                            .state = query.copyWith(filter: 'seen', page: 1),
-                      ),
-                    ],
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _Chip(
+                          label: 'همه',
+                          selected: query.filter == 'all',
+                          onTap: () => ref
+                              .read(inboxQueryProvider.notifier)
+                              .state = query.copyWith(filter: 'all', page: 1),
+                        ),
+                        _Chip(
+                          label: 'خوانده‌نشده',
+                          selected: query.filter == 'unseen',
+                          onTap: () => ref
+                              .read(inboxQueryProvider.notifier)
+                              .state =
+                              query.copyWith(filter: 'unseen', page: 1),
+                        ),
+                        _Chip(
+                          label: 'خوانده‌شده',
+                          selected: query.filter == 'seen',
+                          onTap: () => ref
+                              .read(inboxQueryProvider.notifier)
+                              .state = query.copyWith(filter: 'seen', page: 1),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           Expanded(
@@ -219,8 +284,27 @@ class _InboxListPageState extends ConsumerState<InboxListPage> {
                             final m = res.items[i];
                             return _MailTile(
                               message: m,
-                              onOpen: () =>
-                                  context.go('/inbox/${m.uid}'),
+                              selected: _selectedUids.contains(m.uid),
+                              selectMode: _selectMode,
+                              onOpen: () {
+                                if (_selectMode) {
+                                  setState(() {
+                                    if (_selectedUids.contains(m.uid)) {
+                                      _selectedUids.remove(m.uid);
+                                    } else {
+                                      _selectedUids.add(m.uid);
+                                    }
+                                  });
+                                } else {
+                                  context.go('/inbox/${m.uid}');
+                                }
+                              },
+                              onLongPress: () {
+                                setState(() {
+                                  _selectMode = true;
+                                  _selectedUids.add(m.uid);
+                                });
+                              },
                               onDelete: () => _delete(m),
                             );
                           },
@@ -240,7 +324,9 @@ class _InboxListPageState extends ConsumerState<InboxListPage> {
                                       .state = query.copyWith(
                                       page: query.page - 1)
                                   : null,
+                              // RTL: صفحه قبل = فلش راست
                               icon: const Icon(Icons.chevron_right),
+                              tooltip: 'صفحه قبل',
                             ),
                             Text(
                               _fa(
@@ -255,7 +341,9 @@ class _InboxListPageState extends ConsumerState<InboxListPage> {
                                       .state = query.copyWith(
                                       page: query.page + 1)
                                   : null,
+                              // RTL: صفحه بعد = فلش چپ
                               icon: const Icon(Icons.chevron_left),
+                              tooltip: 'صفحه بعد',
                             ),
                           ],
                         ),
@@ -316,51 +404,73 @@ class _MailTile extends StatelessWidget {
   final InboxMessageSummary message;
   final VoidCallback onOpen;
   final VoidCallback onDelete;
+  final VoidCallback? onLongPress;
+  final bool selected;
+  final bool selectMode;
 
   const _MailTile({
     required this.message,
     required this.onOpen,
     required this.onDelete,
+    this.onLongPress,
+    this.selected = false,
+    this.selectMode = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final m = message;
     return Material(
-      color: AppColors.surface,
+      color: selected ? AppColors.primary.withOpacity(0.06) : AppColors.surface,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onOpen,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: m.unseen
-                  ? AppColors.primary.withOpacity(0.35)
-                  : AppColors.border,
+              color: selected
+                  ? AppColors.primary
+                  : (m.unseen
+                      ? AppColors.primary.withOpacity(0.35)
+                      : AppColors.border),
+              width: selected ? 1.5 : 1,
             ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(10),
+              if (selectMode) ...[
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, right: 6, top: 8),
+                  child: Icon(
+                    selected
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    color: selected ? AppColors.primary : AppColors.textMuted,
+                    size: 22,
+                  ),
                 ),
-                child: Icon(
-                  m.unseen
-                      ? Icons.mark_email_unread_outlined
-                      : Icons.mail_outline,
-                  color: AppColors.primary,
-                  size: 20,
+              ] else
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    m.unseen
+                        ? Icons.mark_email_unread_outlined
+                        : Icons.mail_outline,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
+              if (!selectMode) const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,16 +515,17 @@ class _MailTile extends StatelessWidget {
                   ],
                 ),
               ),
-              PopupMenuButton<String>(
-                onSelected: (v) {
-                  if (v == 'open') onOpen();
-                  if (v == 'delete') onDelete();
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'open', child: Text('مشاهده')),
-                  PopupMenuItem(value: 'delete', child: Text('حذف')),
-                ],
-              ),
+              if (!selectMode)
+                PopupMenuButton<String>(
+                  onSelected: (v) {
+                    if (v == 'open') onOpen();
+                    if (v == 'delete') onDelete();
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'open', child: Text('مشاهده')),
+                    PopupMenuItem(value: 'delete', child: Text('حذف')),
+                  ],
+                ),
             ],
           ),
         ),

@@ -12,6 +12,8 @@ class ManagerUser {
   final DateTime? dateCreated;
   final DateTime? dateModified;
   final DateTime? lastLogin;
+  final String lastLoginIp;
+  final String lastLoginPlatform;
   final int ordersCount;
   final String totalSpent;
   final int walletBalance;
@@ -32,6 +34,8 @@ class ManagerUser {
     this.dateCreated,
     this.dateModified,
     this.lastLogin,
+    this.lastLoginIp = '',
+    this.lastLoginPlatform = '',
     this.ordersCount = 0,
     this.totalSpent = '0',
     this.walletBalance = 0,
@@ -111,6 +115,8 @@ class ManagerUser {
       dateCreated: DateTime.tryParse('${json['date_created'] ?? ''}'),
       dateModified: DateTime.tryParse('${json['date_modified'] ?? ''}'),
       lastLogin: lastLogin,
+      lastLoginIp: (json['last_login_ip'] ?? meta['ezlens_last_login_ip'] ?? meta['last_login_ip'] ?? '').toString(),
+      lastLoginPlatform: (json['last_login_platform'] ?? meta['ezlens_last_login_ua'] ?? meta['last_login_ua'] ?? json['role'] ?? '').toString(),
       ordersCount: _asInt(json['orders_count']),
       totalSpent: (json['total_spent'] ?? '0').toString(),
       walletBalance: _asInt(meta['ezcd_wallet_balance'] ?? json['wallet_balance']),
@@ -147,6 +153,12 @@ class ManagerUser {
       dateCreated: dateCreated,
       dateModified: dateModified,
       lastLogin: ll,
+      lastLoginIp: (e['last_login_ip']?.toString().isNotEmpty == true)
+          ? e['last_login_ip'].toString()
+          : lastLoginIp,
+      lastLoginPlatform: (e['last_login_platform']?.toString().isNotEmpty == true)
+          ? e['last_login_platform'].toString()
+          : lastLoginPlatform,
       ordersCount: e['orders_count'] != null ? _asInt(e['orders_count']) : ordersCount,
       totalSpent: e['total_spent']?.toString() ?? totalSpent,
       walletBalance: e['wallet_balance'] != null ? _asInt(e['wallet_balance']) : walletBalance,

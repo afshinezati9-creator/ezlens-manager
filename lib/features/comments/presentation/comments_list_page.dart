@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../core/widgets/collapsible_filter_box.dart';
 import '../../../core/widgets/app_skeleton.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ezlens_manager/core/theme/app_colors.dart';
@@ -337,11 +338,13 @@ class _CommentsListPageState extends ConsumerState<CommentsListPage> {
       ),
       body: Column(
         children: [
-          CommentFilterWidget(
-            searchController: _searchController,
-            onSearchChanged: _onSearchChanged,
+          CollapsibleFilterBox(
+            title: 'فیلتر نظرات',
+            child: CommentFilterWidget(
+              searchController: _searchController,
+              onSearchChanged: _onSearchChanged,
+            ),
           ),
-          const SizedBox(height: 8),
 
           Expanded(
             child: commentsAsync.when(

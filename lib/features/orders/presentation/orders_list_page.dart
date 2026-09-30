@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../core/widgets/collapsible_filter_box.dart';
 import '../../../core/widgets/app_skeleton.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -258,7 +259,9 @@ class _OrdersListPageState extends ConsumerState<OrdersListPage> {
           // ============================================================
           // پنل فیلترها
           // ============================================================
-          Container(
+          CollapsibleFilterBox(
+            title: 'فیلتر سفارشات',
+            child: Container(
             color: AppTheme.surface,
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -321,6 +324,8 @@ class _OrdersListPageState extends ConsumerState<OrdersListPage> {
           ),
 
           // ============================================================
+          ),
+
           // لیست سفارشات
           // ============================================================
           Expanded(

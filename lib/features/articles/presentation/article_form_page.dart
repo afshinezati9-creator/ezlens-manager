@@ -609,6 +609,7 @@ class _ArticleFormPageState extends ConsumerState<ArticleFormPage> {
   Uint8List? _featuredImageBytes;
   String? _featuredImageName;
   int? _featuredImageSize;
+  bool _featuredCleared = false;
   FeaturedImage? _existingFeaturedImage;
 
   // کدها
@@ -721,6 +722,7 @@ class _ArticleFormPageState extends ConsumerState<ArticleFormPage> {
 
         if (article.featuredImage != null) {
           _existingFeaturedImage = article.featuredImage;
+          _featuredCleared = false;
         }
 
         _tempSelectedCategories = categoryIds;
@@ -747,6 +749,7 @@ class _ArticleFormPageState extends ConsumerState<ArticleFormPage> {
         _featuredImageName = pickedFile.name;
         _featuredImageSize = size;
         _existingFeaturedImage = null;
+        _featuredCleared = false;
       });
     }
   }
@@ -757,6 +760,7 @@ class _ArticleFormPageState extends ConsumerState<ArticleFormPage> {
       _featuredImageName = null;
       _featuredImageSize = null;
       _existingFeaturedImage = null;
+      _featuredCleared = true;
     });
   }
 
@@ -872,8 +876,12 @@ class _ArticleFormPageState extends ConsumerState<ArticleFormPage> {
         final imageId =
             await _uploadImage(_featuredImageBytes!, _featuredImageName!);
         articleData['featured_media'] = imageId;
+        _featuredCleared = false;
       } else if (_existingFeaturedImage != null) {
         articleData['featured_media'] = _existingFeaturedImage!.id;
+      } else if (_featuredCleared) {
+        // WordPress: 0 removes featured image
+        articleData['featured_media'] = 0;
       }
 
       // Guard: refuse empty body on update (protects Elementor / existing posts)

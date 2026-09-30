@@ -373,6 +373,15 @@ class _ContentComparison extends StatelessWidget {
             const SizedBox(height: 14),
             const LinearProgressIndicator(minHeight: 2),
           ],
+          if (posts.hasError) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'بازدید مقالات موقتاً در دسترس نیست (اتصال یا سرور).',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ),
+          ],
           if (products.hasError || posts.hasError) ...[
             const SizedBox(height: 9),
             const Align(

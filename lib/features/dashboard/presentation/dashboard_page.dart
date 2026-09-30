@@ -739,6 +739,24 @@ class _LoginRow extends StatelessWidget {
                         color: AppColors.textSecondary,
                       ),
                     ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        if (user.role.isNotEmpty) user.role,
+                        if (user.lastLoginPlatform.isNotEmpty)
+                          user.lastLoginPlatform,
+                        if (user.lastLoginIp.isNotEmpty)
+                          'IP ${user.lastLoginIp}'
+                        else
+                          'IP —',
+                      ].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: AppColors.textSecondary.withOpacity(0.85),
+                      ),
+                    ),
                   ],
                 ),
               ),

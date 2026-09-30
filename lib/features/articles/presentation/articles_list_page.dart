@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/collapsible_filter_box.dart';
 import '../data/article_models.dart';
 import 'articles_provider.dart';
 
@@ -584,10 +585,15 @@ class _ArticlesListPageState extends ConsumerState<ArticlesListPage> {
       ),
       body: Column(
         children: [
-          // ===== فیلترها =====
-          Container(
-            color: AppTheme.surface,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          // ===== فیلترها (جمع‌شونده) =====
+          CollapsibleFilterBox(
+            title: 'فیلتر مقالات',
+            summary: [
+              if (currentSearch.isNotEmpty) 'جستجو',
+              if (currentCategoryFilter != null) 'دسته',
+              if (currentStatusFilter != null && currentStatusFilter!.isNotEmpty) 'وضعیت',
+              if (currentDateFrom.isNotEmpty || currentDateTo.isNotEmpty) 'تاریخ',
+            ].whereType<String>().join(' · '),
             child: Column(
               children: [
                 TextField(

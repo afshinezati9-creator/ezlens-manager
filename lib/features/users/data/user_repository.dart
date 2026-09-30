@@ -227,6 +227,8 @@ class UserRepository {
       phone: (json['phone'] ?? '').toString(),
       dateCreated: reg,
       lastLogin: last,
+      lastLoginIp: (json['last_login_ip'] ?? '').toString(),
+      lastLoginPlatform: (json['last_login_platform'] ?? role).toString(),
       ordersCount: int.tryParse('${json['orders_count']}') ?? 0,
       totalSpent: (json['total_spent'] ?? '0').toString(),
       walletBalance: int.tryParse('${json['wallet_balance']}') ?? 0,

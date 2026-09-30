@@ -32,19 +32,35 @@ class _MediaUploadDialogState extends ConsumerState<MediaUploadDialog> {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
       type: FileType.any,
+      withData: true, // required on mobile/web so bytes are available
     );
-    if (result != null && result.files.isNotEmpty) {
-      setState(() {
-        _selectedFiles = result.files.map((f) {
-          return (
-            bytes: f.bytes!,
-            name: f.name,
-          );
-        }).toList();
-        _progress = 0;
-        _statusMessage = '';
-      });
+    if (result == null || result.files.isEmpty) return;
+
+    final picked = <({Uint8List bytes, String name})>[];
+    for (final f in result.files) {
+      final bytes = f.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        // Skip files without in-memory data (path-only on some platforms)
+        continue;
+      }
+      picked.add((bytes: bytes, name: f.name));
     }
+
+    if (picked.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _statusMessage =
+              'فایل قابل خواندن نبود. لطفاً دوباره انتخاب کنید یا از مرورگر دیگری امتحان کنید.';
+        });
+      }
+      return;
+    }
+
+    setState(() {
+      _selectedFiles = picked;
+      _progress = 0;
+      _statusMessage = '';
+    });
   }
 
   Future<void> _uploadFiles() async {

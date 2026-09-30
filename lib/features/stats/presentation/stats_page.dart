@@ -909,9 +909,19 @@ class _VisitorsIndexSheet extends ConsumerWidget {
               child: Row(
                 children: [
                   const Expanded(
-                    child: Text(
-                      'بازدیدکنندگان و خلاصه ترافیک',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'بازدیدکنندگان و خلاصه ترافیک',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'آخرین بازدیدها · صفحات پرترافیک · منبع ورود · نوع دستگاه',
+                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w400),
+                        ),
+                      ],
                     ),
                   ),
                   IconButton(
@@ -931,17 +941,87 @@ class _VisitorsIndexSheet extends ConsumerWidget {
                   ),
                 ),
                 data: (list) {
+                  bool isJunkPath(String p) {
+                    final s = p.toLowerCase();
+                    if (s.isEmpty || s == '/' || s == '—') return true;
+                    // bots / security / cache noise
+                    if (s.contains('wordfence') ||
+                        s.contains('lscwp') ||
+                        s.contains('wp-cron') ||
+                        s.contains('xmlrpc') ||
+                        s.contains('wp-json') ||
+                        s.contains('admin-ajax') ||
+                        s.contains('favicon') ||
+                        s.contains('.map') ||
+                        s.contains('robots.txt')) {
+                      return true;
+                    }
+                    return false;
+                  }
+
+                  String cleanPath(String raw) {
+                    var p = raw.trim();
+                    // drop query string for ranking
+                    final q = p.indexOf('?');
+                    if (q >= 0) p = p.substring(0, q);
+                    // collapse repeated slashes
+                    p = p.replaceAll(RegExp(r'/+'), '/');
+                    if (p.isEmpty) p = '/';
+                    return p;
+                  }
+
+                  String friendlySource(String raw) {
+                    final s = raw.trim().toLowerCase();
+                    if (s.isEmpty || s == 'نامشخص') return 'ورود مستقیم';
+                    if (s == 'php' || s == 'direct' || s == 'none') {
+                      return 'ورود مستقیم';
+                    }
+                    if (s.contains('google')) return 'گوگل';
+                    if (s.contains('bing')) return 'بینگ';
+                    if (s.contains('yahoo')) return 'یاهو';
+                    if (s.contains('instagram') || s == 'ig') return 'اینستاگرام';
+                    if (s.contains('telegram') || s == 'tg') return 'تلگرام';
+                    if (s.contains('twitter') || s.contains('x.com')) {
+                      return 'توییتر / X';
+                    }
+                    if (s.contains('facebook') || s == 'fb') return 'فیسبوک';
+                    return raw.trim();
+                  }
+
+                  String friendlyDevice(String raw) {
+                    final s = raw.trim().toLowerCase();
+                    if (s.isEmpty) return 'نامشخص';
+                    if (s.contains('mobile') ||
+                        s.contains('android') ||
+                        s.contains('iphone') ||
+                        s == 'phone') {
+                      return 'موبایل';
+                    }
+                    if (s.contains('tablet') || s.contains('ipad')) {
+                      return 'تبلت';
+                    }
+                    if (s.contains('desktop') ||
+                        s.contains('computer') ||
+                        s.contains('pc') ||
+                        s.contains('windows') ||
+                        s.contains('mac')) {
+                      return 'کامپیوتر';
+                    }
+                    return raw.trim();
+                  }
+
                   final pathCount = <String, int>{};
                   final sourceCount = <String, int>{};
                   final deviceCount = <String, int>{};
                   for (final v in list) {
-                    final path = (v.path.isNotEmpty ? v.path : v.title).trim();
-                    if (path.isNotEmpty) {
+                    final path = cleanPath(
+                        v.path.isNotEmpty ? v.path : v.title);
+                    if (!isJunkPath(path)) {
                       pathCount[path] = (pathCount[path] ?? 0) + 1;
                     }
-                    final src = v.source.trim().isEmpty ? 'نامشخص' : v.source.trim();
+                    final src = friendlySource(v.source);
                     sourceCount[src] = (sourceCount[src] ?? 0) + 1;
-                    final dev = v.device.trim().isEmpty ? 'نامشخص' : v.device.trim();
+                    final dev = friendlyDevice(v.device);
                     deviceCount[dev] = (deviceCount[dev] ?? 0) + 1;
                   }
                   final topPaths = pathCount.entries.toList()
@@ -956,6 +1036,7 @@ class _VisitorsIndexSheet extends ConsumerWidget {
                     children: [
                       _SheetSection(
                         title: 'آخرین بازدیدکنندگان',
+                        subtitle: '۱۰ بازدید اخیر سایت',
                         color: const Color(0xFF059669),
                         child: list.isEmpty
                             ? const Text('هنوز بازدیدی ثبت نشده', style: TextStyle(color: AppColors.textMuted, fontSize: 12))
@@ -963,36 +1044,30 @@ class _VisitorsIndexSheet extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       _SheetSection(
-                        title: 'مسیرهای پرترافیک',
+                        title: 'صفحات پرترافیک سایت',
+                        subtitle: 'آدرس صفحاتی که بیشترین بازدید را داشته‌اند',
                         color: const Color(0xFF0EA5E9),
                         child: topPaths.isEmpty
                             ? const Text('داده‌ای نیست', style: TextStyle(color: AppColors.textMuted, fontSize: 12))
-                            : Column(children: [for (final e in topPaths.take(8)) _MiniStatRow(label: e.key, value: '${e.value}')]),
+                            : Column(children: [for (final e in topPaths.take(8)) _MiniStatRow(label: e.key, value: '${e.value} بازدید')]),
                       ),
                       const SizedBox(height: 12),
                       _SheetSection(
-                        title: 'منابع و دستگاه‌ها',
+                        title: 'منابع ورود',
+                        subtitle: 'از کجا به سایت آمده‌اند (گوگل، مستقیم، ...)',
                         color: const Color(0xFF7C3AED),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (topSources.isEmpty && topDevices.isEmpty)
-                              const Text('داده‌ای نیست', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                            if (topSources.isNotEmpty) ...[
-                              const Text('منابع', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                              const SizedBox(height: 6),
-                              for (final e in topSources.take(6))
-                                _MiniStatRow(label: e.key, value: '${e.value}'),
-                              const SizedBox(height: 10),
-                            ],
-                            if (topDevices.isNotEmpty) ...[
-                              const Text('دستگاه‌ها', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                              const SizedBox(height: 6),
-                              for (final e in topDevices.take(6))
-                                _MiniStatRow(label: e.key, value: '${e.value}'),
-                            ],
-                          ],
-                        ),
+                        child: topSources.isEmpty
+                            ? const Text('داده‌ای نیست', style: TextStyle(color: AppColors.textMuted, fontSize: 12))
+                            : Column(children: [for (final e in topSources.take(6)) _MiniStatRow(label: e.key, value: '${e.value}')]),
+                      ),
+                      const SizedBox(height: 12),
+                      _SheetSection(
+                        title: 'نوع دستگاه',
+                        subtitle: 'موبایل، تبلت یا دسکتاپ',
+                        color: const Color(0xFFD97706),
+                        child: topDevices.isEmpty
+                            ? const Text('داده‌ای نیست', style: TextStyle(color: AppColors.textMuted, fontSize: 12))
+                            : Column(children: [for (final e in topDevices.take(6)) _MiniStatRow(label: e.key, value: '${e.value}')]),
                       ),
                     ],
                   );
@@ -1008,9 +1083,15 @@ class _VisitorsIndexSheet extends ConsumerWidget {
 
 class _SheetSection extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final Color color;
   final Widget child;
-  const _SheetSection({required this.title, required this.color, required this.child});
+  const _SheetSection({
+    required this.title,
+    this.subtitle,
+    required this.color,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1029,7 +1110,25 @@ class _SheetSection extends StatelessWidget {
           Row(children: [
             Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
             const SizedBox(width: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                  if (subtitle != null && subtitle!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ]),
           const SizedBox(height: 10),
           child,
